@@ -1,0 +1,36 @@
+{
+    "cmds": {
+        "default": {
+            "type": "echo",
+            "echo": "我还不认识这个指令呐!({{WXWORK_ROBOT_CMD}})"
+        },
+        "test-echo\\s*(?P<MSG>[\\w_\\d\\-]+)": {
+            "type": "echo",
+            "echo": "Hello World! {{WXWORK_ROBOT_CMD_MSG}}"
+        },
+        "test-run\\s*(?P<MSG>[\\w_\\d\\-]+)": {
+            "type": "spawn",
+            "exec": "/bin/bash",
+            "args": ["-c ", "echo '{{WXWORK_ROBOT_CMD_MSG}}-{{WXWORK_ROBOT_PROJECT_NAME}}({{WXWORK_ROBOT_PROJECT_TOKEN}}), {{WXWORK_ROBOT_CMD_TEST_ENV}}'"],
+            "stdin": "input from WXWork",
+            "stdout": "response to WXWork(markdown)",
+            "stderr": "error response to WXWork(text and will mentione the sender)",
+            "env": {
+                "TEST_ENV": "all env key will be WXWORK_ROBOT_CMD_{NAME IN ENV} or WXWORK_ROBOT_PROJECT_{NAME}"
+            }
+        }
+    },
+    "projects": [{
+        "name": "svr_compile_pubpkg",
+        "token": "",
+        "encodingAESKey": "",
+        "sodaToken": "10ee2387e7a508ba3880c552feae0f35",
+        "cmds": {
+            "发\\s*(?P<BRANCH>[\\w_\\d\\-]+)\\s*(分支)?到\\s*(?P<SVR>[\\w_\\d\\-]+)\\s*": {
+                "type": "http",
+                "url": "http://soda.oa.com/api/tokenBuild/{{WXWORK_ROBOT_PROJECT_NAME}}?token={{WXWORK_ROBOT_PROJECT_SODATOKEN}}&branch={{WXWORK_ROBOT_CMD_BRANCH}}&svr={{WXWORK_ROBOT_CMD_SVR}}",
+                "post": ""
+            }
+        }
+    }]
+}

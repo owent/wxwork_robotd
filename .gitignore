@@ -1,0 +1,9 @@
+/.vscode/settings.json
+
+
+/target
+**/*.rs.bk
+*.log.*
+
+wxwork_robotd.pid
+/wxwork_robotd-*
