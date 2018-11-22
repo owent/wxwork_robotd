@@ -1,35 +1,60 @@
 {
+    "listen": ["0.0.0.0:12019", ":::12019"],
+    "taskTimeout": 4000,
+    "workers": 8,
+    "backlog": 256,
     "cmds": {
         "default": {
             "type": "echo",
-            "echo": "我还不认识这个指令呐!({{WXWORK_ROBOT_CMD}})"
+            "echo": "我还不认识这个指令呐!({{WXWORK_ROBOT_CMD}})",
+            "hidden": true
         },
-        "test-echo\\s*(?P<MSG>[\\w_\\d\\-]+)": {
+        "(help)|(帮助)|(指令列表)": {
+            "type": "help",
+            "description": "help|帮助|指令列表",
+            "prefix": "### 可用指令列表\r\n"
+        },
+        "说\\s*(?P<MSG>[^\\r\\n]+)": {
             "type": "echo",
-            "echo": "Hello World! {{WXWORK_ROBOT_CMD_MSG}}"
+            "echo": "{{WXWORK_ROBOT_CMD_MSG}}",
+            "description": "说**消息内容**"
         },
-        "test-run\\s*(?P<MSG>[\\w_\\d\\-]+)": {
+        "执行命令\\s*(?P<EXEC>[^\\s]+)\\s*(?P<PARAM>[^\\s]*)": {
             "type": "spawn",
-            "exec": "/bin/bash",
-            "args": ["-c ", "echo '{{WXWORK_ROBOT_CMD_MSG}}-{{WXWORK_ROBOT_PROJECT_NAME}}({{WXWORK_ROBOT_PROJECT_TOKEN}}), {{WXWORK_ROBOT_CMD_TEST_ENV}}'"],
-            "stdin": "input from WXWork",
-            "stdout": "response to WXWork(markdown)",
-            "stderr": "error response to WXWork(text and will mentione the sender)",
+            "exec": "{{WXWORK_ROBOT_CMD_EXEC}}",
+            "args": ["{{WXWORK_ROBOT_CMD_PARAM}}"],
+            "cwd": "",
             "env": {
                 "TEST_ENV": "all env key will be WXWORK_ROBOT_CMD_{NAME IN ENV} or WXWORK_ROBOT_PROJECT_{NAME}"
-            }
+            },
+            "description": "执行命令**可执行文件路径** ***参数***"
         }
     },
     "projects": [{
-        "name": "svr_compile_pubpkg",
-        "token": "",
-        "encodingAESKey": "",
-        "sodaToken": "10ee2387e7a508ba3880c552feae0f35",
+        "name": "test_proj",
+        "token": "hJqcu3uJ9Tn2gXPmxx2w9kkCkCE2EPYo",
+        "encodingAESKey": "6qkdMrq68nTKduznJYO1A37W2oEgpkMUvkttRToqhUt",
+        "env": {
+            "testURL": "robots.txt"
+        },
         "cmds": {
-            "发\\s*(?P<BRANCH>[\\w_\\d\\-]+)\\s*(分支)?到\\s*(?P<SVR>[\\w_\\d\\-]+)\\s*": {
+            "http请求": {
                 "type": "http",
-                "url": "http://soda.oa.com/api/tokenBuild/{{WXWORK_ROBOT_PROJECT_NAME}}?token={{WXWORK_ROBOT_PROJECT_SODATOKEN}}&branch={{WXWORK_ROBOT_CMD_BRANCH}}&svr={{WXWORK_ROBOT_CMD_SVR}}",
-                "post": ""
+                "method": "get",
+                "url": "https://owent.net/{{WXWORK_ROBOT_PROJECT_TEST_URL}}",
+                "post": "",
+                "content_type": "",
+                "headers": {
+                    "X-TEST": "value"
+                },
+                "echo": "已发起HTTP请求，回包内容\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}"
+            },
+            "访问\\s*(?P<URL>[^\\r\\n]+)": {
+                "type": "http",
+                "url": "{{WXWORK_ROBOT_CMD_URL}}",
+                "post": "",
+                "echo": "HTTP请求: {{WXWORK_ROBOT_CMD_URL}}\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}",
+                "description": "访问**URL地址**"
             }
         }
     }]

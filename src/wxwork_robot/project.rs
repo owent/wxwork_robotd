@@ -1,0 +1,683 @@
+use openssl::symm::{Cipher, Crypter, Mode};
+//use openssl::hash::{Hasher, MessageDigest};
+use actix_web::HttpResponse;
+use byteorder::{BigEndian, ByteOrder};
+use ring;
+
+use serde_json;
+use std::collections::HashMap;
+use std::iter;
+use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
+use super::{command, message};
+
+#[derive(Clone)]
+struct WXWorkProjectCipherInfo {
+    pub cipher: Cipher,
+    pub key: Vec<u8>,
+    pub iv: Vec<u8>,
+}
+
+pub struct WXWorkProject {
+    name: Arc<String>,
+    pub token: String,
+    pub encoding_aes_key: String,
+    pub envs: Rc<serde_json::Value>,
+    pub cmds: Rc<command::WXWorkCommandList>,
+
+    cipher_info: Arc<Mutex<Box<WXWorkProjectCipherInfo>>>,
+    nonce: AtomicUsize,
+}
+
+unsafe impl Send for WXWorkProject {}
+unsafe impl Sync for WXWorkProject {}
+
+pub type WXWorkProjectPtr = Arc<WXWorkProject>;
+pub type WXWorkProjectMap = HashMap<String, WXWorkProjectPtr>;
+
+impl WXWorkProject {
+    pub fn parse(json: &serde_json::Value) -> WXWorkProjectMap {
+        let mut ret: HashMap<String, Arc<WXWorkProject>> = HashMap::new();
+
+        if let Some(arr) = json.as_array() {
+            for conf in arr {
+                let proj_res = WXWorkProject::new(conf);
+                if let Some(proj) = proj_res {
+                    ret.insert((*proj.name()).clone(), Arc::new(proj));
+                }
+            }
+        }
+
+        ret
+    }
+
+    pub fn new(json: &serde_json::Value) -> Option<WXWorkProject> {
+        if !json.is_object() {
+            error!("project configure invalid: {}", json);
+            return None;
+        }
+        let proj_name: String;
+        let proj_token: String;
+        let proj_aes_key: String;
+        let proj_cmds: command::WXWorkCommandList;
+        let mut envs_obj = json!({});
+
+        {
+            if !json.is_object() {
+                error!("project must be a json object, but real is {}", json);
+                return None;
+            };
+
+            proj_name = if let Some(x) = command::read_string_from_json_object(json, "name") {
+                x
+            } else {
+                error!("project configure must has name field {}", json);
+                return None;
+            };
+
+            proj_token = if let Some(x) = command::read_string_from_json_object(json, "token") {
+                x
+            } else {
+                error!(
+                    "project \"{}\" configure must has token field {}",
+                    proj_name, json
+                );
+                return None;
+            };
+
+            proj_aes_key =
+                if let Some(x) = command::read_string_from_json_object(json, "encodingAESKey") {
+                    x
+                } else {
+                    error!(
+                        "project \"{}\" configure must has encodingAESKey field {}",
+                        proj_name, json
+                    );
+                    return None;
+                };
+
+            let mut envs_var_count = 0;
+            if let Some(envs_kvs) = command::read_object_from_json_object(json, "env") {
+                for (k, v) in envs_kvs {
+                    envs_obj[format!("WXWORK_ROBOT_PROJECT_{}", k)
+                                 .as_str()
+                                 .to_uppercase()] = if v.is_string() {
+                        v.clone()
+                    } else {
+                        serde_json::Value::String(v.to_string())
+                    };
+                    envs_var_count = envs_var_count + 1;
+                }
+            }
+
+            if let Some(kvs) = json.as_object() {
+                if let Some(cmds_json) = kvs.get("cmds") {
+                    proj_cmds = command::WXWorkCommand::parse(cmds_json);
+                } else {
+                    proj_cmds = Vec::new();
+                }
+            } else {
+                proj_cmds = Vec::new();
+            }
+
+            for cmd in proj_cmds.iter() {
+                info!(
+                    "project \"{}\" load command \"{}\" success",
+                    proj_name,
+                    cmd.name()
+                );
+            }
+            debug!("project \"{}\" with token(base64): \"{}\", aes key(base64): \"{}\" , env vars({}), load success.", proj_name, proj_token, proj_aes_key, envs_var_count);
+        }
+
+        envs_obj["WXWORK_ROBOT_PROJECT_NAME"] = serde_json::Value::String(proj_name.clone());
+        envs_obj["WXWORK_ROBOT_PROJECT_TOKEN"] = serde_json::Value::String(proj_token.clone());
+        envs_obj["WXWORK_ROBOT_PROJECT_ENCODING_AES_KEY"] =
+            serde_json::Value::String(proj_aes_key.clone());
+
+        let aes_key_bin = match base64::decode((proj_aes_key.clone() + "=").as_bytes()) {
+            Ok(x) => x,
+            Err(e) => {
+                error!(
+                    "project \"{}\" configure encodingAESKey \"{}\" decode failed \"{}\"",
+                    proj_name,
+                    proj_aes_key,
+                    e.to_string()
+                );
+                return None;
+            }
+        };
+
+        let cipher_openssl = Cipher::aes_256_cbc();
+        if cipher_openssl.key_len() != aes_key_bin.len() {
+            error!(
+                "project \"{}\" configure encodingAESKey \"{}\" decode with invalid len {}, require 32",
+                proj_name,
+                proj_aes_key,
+                aes_key_bin.len()
+            );
+            return None;
+        }
+
+        let cipher_iv = if let Some(x) = cipher_openssl.iv_len() {
+            Vec::from(&aes_key_bin[0..x])
+        } else {
+            Vec::new()
+        };
+
+        debug!(
+            "project \"{}\" load aes key: \"{}\", iv: \"{}\", block size: {}",
+            proj_name,
+            hex::encode(&aes_key_bin),
+            hex::encode(&cipher_iv),
+            cipher_openssl.block_size()
+        );
+
+        let cipher_info = WXWorkProjectCipherInfo {
+            cipher: cipher_openssl,
+            key: aes_key_bin,
+            iv: cipher_iv,
+        };
+
+        Some(WXWorkProject {
+            name: Arc::new(proj_name),
+            token: proj_token,
+            encoding_aes_key: proj_aes_key,
+            envs: Rc::new(envs_obj),
+            cmds: Rc::new(proj_cmds),
+
+            cipher_info: Arc::new(Mutex::new(Box::new(cipher_info))),
+            nonce: AtomicUsize::new(if let Ok(x) =
+                SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+            {
+                (x.as_secs() as usize) << 16
+            } else {
+                (1 as usize) << 16
+            }),
+        })
+    }
+
+    pub fn name(&self) -> Arc<String> {
+        self.name.clone()
+    }
+
+    pub fn try_commands(
+        &self,
+        message: &str,
+    ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
+        WXWorkProject::try_capture_commands(&self.cmds, message)
+    }
+
+    pub fn try_capture_commands(
+        cmds: &command::WXWorkCommandList,
+        message: &str,
+    ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
+        for cmd in cmds {
+            let mat_res = cmd.try_capture(message);
+            if mat_res.has_result() {
+                return Some((cmd.clone(), mat_res));
+            }
+        }
+
+        None
+    }
+
+    pub fn generate_template_vars(
+        &self,
+        cmd_match: &command::WXWorkCommandMatch,
+    ) -> serde_json::Value {
+        let mut ret = self.envs.as_ref().clone();
+        ret = command::merge_envs(ret, cmd_match.ref_json());
+
+        ret
+    }
+
+    pub fn pkcs7_encode(&self, input: &[u8]) -> Vec<u8> {
+        let block_size: usize = 32;
+        let mut ret = Vec::new();
+
+        let text_length = input.len();
+        let padding_length = match block_size - text_length % block_size {
+            0 => block_size,
+            x => x,
+        };
+        let padding_char: u8 = padding_length as u8;
+
+        ret.reserve(text_length + padding_length);
+        ret.extend_from_slice(input);
+        ret.extend(iter::repeat(padding_char).take(padding_length));
+
+        ret
+    }
+
+    pub fn pkcs7_decode<'a>(&self, input: &'a [u8]) -> &'a [u8] {
+        let block_size: usize = 32;
+
+        if 0 == input.len() {
+            return input;
+        }
+
+        let padding_char = input[input.len() - 1];
+        if padding_char < 1 || padding_char as usize > block_size {
+            return input;
+        }
+
+        &input[0..(input.len() - padding_char as usize)]
+    }
+
+    pub fn decrypt_msg_raw(&self, input: &[u8]) -> Result<Vec<u8>, String> {
+        // rand_msg=AES_Decrypt(aes_msg)
+        // 去掉rand_msg头部的16个随机字节和4个字节的msg_len，截取msg_len长度的部分即为msg，剩下的为尾部的receiveid
+        // 网络字节序
+
+        let mut decrypter: Crypter;
+        let block_size: usize;
+
+        match self.cipher_info.lock() {
+            Ok(c) => {
+                let ci = &*c;
+                decrypter = match Crypter::new(ci.cipher, Mode::Decrypt, &ci.key, Some(&ci.iv)) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        let ret = format!(
+                            "project \"{}\" create Crypter for decrypt {} with key={} iv={} failed\n{:?}",
+                            self.name(),
+                            hex::encode(input),
+                            hex::encode(&ci.key),
+                            hex::encode(&ci.iv),
+                            e
+                        );
+                        debug!("{}", ret);
+                        return Err(ret);
+                    }
+                };
+                block_size = ci.cipher.block_size();
+            }
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" try to lock cipher_info failed, {:?}",
+                    self.name(),
+                    e
+                );
+                error!("{}", ret);
+                return Err(ret);
+            }
+        }
+
+        decrypter.pad(false);
+        let mut plaintext = vec![0; input.len() + block_size];
+        let mut plaintext_count = match decrypter.update(input, &mut plaintext) {
+            Ok(x) => x,
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" decrypt {} update failed\n{:?}",
+                    self.name(),
+                    hex::encode(input),
+                    e
+                );
+                debug!("{}", ret);
+                return Err(ret);
+            }
+        };
+
+        plaintext_count += match decrypter.finalize(&mut plaintext[plaintext_count..]) {
+            Ok(x) => x,
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" decrypt {} finalize failed\n{:?}",
+                    self.name(),
+                    hex::encode(input),
+                    e
+                );
+                debug!("{}", ret);
+                return Err(ret);
+            }
+        };
+
+        plaintext.truncate(plaintext_count);
+        Ok(plaintext)
+    }
+
+    pub fn decrypt_msg_raw_base64(&self, input: &str) -> Result<Vec<u8>, String> {
+        // POST http://api.3dept.com/?msg_signature=ASDFQWEXZCVAQFASDFASDFSS&timestamp=13500001234&nonce=123412323
+        // aes_msg=Base64_Decode(msg_encrypt)
+        let bin = match base64::decode(input.as_bytes()) {
+            Ok(x) => x,
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" decode base64 {} failed, {:?}",
+                    self.name(),
+                    input,
+                    e.to_string()
+                );
+                error!("{}", ret);
+                return Err(ret);
+            }
+        };
+
+        match self.decrypt_msg_raw(&bin) {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+
+    pub fn decrypt_msg_raw_base64_content(
+        &self,
+        input: &str,
+    ) -> Result<message::WXWorkMessageDec, String> {
+        let dec_bin = match self.decrypt_msg_raw_base64(input) {
+            Ok(x) => x,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        debug!(
+            "project \"{}\" try to decrypt base64: {}",
+            self.name(),
+            input
+        );
+        let dec_bin_unpadding = self.pkcs7_decode(&dec_bin);
+
+        if dec_bin_unpadding.len() <= 20 {
+            let err_msg = format!(
+                "project \"{}\" decode {} data length invalid",
+                self.name(),
+                hex::encode(&dec_bin)
+            );
+            error!("{}", err_msg);
+            return Err(err_msg);
+        }
+
+        let msg_len = BigEndian::read_u32(&dec_bin_unpadding[16..20]) as usize;
+        if msg_len + 20 > dec_bin_unpadding.len() {
+            let err_msg = format!(
+                "project \"{}\" decode message length {} , but bin data {} has only length {}",
+                self.name(),
+                msg_len,
+                hex::encode(&dec_bin_unpadding),
+                dec_bin_unpadding.len()
+            );
+            error!("{}", err_msg);
+            return Err(err_msg);
+        }
+
+        let msg_content = match String::from_utf8(dec_bin_unpadding[20..(20 + msg_len)].to_vec()) {
+            Ok(x) => x,
+            Err(e) => {
+                let err_msg = format!(
+                    "project \"{}\" decode message content {} failed, {:?}",
+                    self.name(),
+                    hex::encode(&dec_bin_unpadding[20..msg_len]),
+                    e
+                );
+                error!("{}", err_msg);
+                return Err(err_msg);
+            }
+        };
+
+        let receiveid = if dec_bin_unpadding.len() > 20 + msg_len {
+            match String::from_utf8(dec_bin_unpadding[(20 + msg_len)..].to_vec()) {
+                Ok(x) => x,
+                Err(e) => {
+                    let err_msg = format!(
+                        "project \"{}\" decode message content {} failed, {:?}",
+                        self.name(),
+                        hex::encode(&dec_bin_unpadding[20..msg_len]),
+                        e
+                    );
+                    error!("{}", err_msg);
+                    String::default()
+                }
+            }
+        } else {
+            String::default()
+        };
+
+        debug!(
+            "project \"{}\" decode message from receiveid={} content {}",
+            self.name(),
+            receiveid,
+            msg_content
+        );
+        Ok(message::WXWorkMessageDec {
+            content: msg_content,
+            receiveid: receiveid,
+        })
+    }
+
+    pub fn encrypt_msg_raw(&self, input: &[u8]) -> Result<Vec<u8>, String> {
+        // rand_msg=AES_Decrypt(aes_msg)
+        // 去掉rand_msg头部的16个随机字节和4个字节的msg_len，截取msg_len长度的部分即为msg，剩下的为尾部的receiveid
+        // 网络字节序,回包的receiveid直接为空即可
+
+        let mut input_len_buf = [0; 4];
+        BigEndian::write_u32(&mut input_len_buf, input.len() as u32);
+
+        let mut padded_plaintext: Vec<u8> = Vec::new();
+        padded_plaintext.reserve(64 + input.len());
+        padded_plaintext.extend_from_slice(self.alloc_random_str().as_bytes());
+        padded_plaintext.extend_from_slice(&input_len_buf);
+        padded_plaintext.extend_from_slice(input);
+
+        let padded_input = self.pkcs7_encode(&padded_plaintext);
+
+        let mut encrypter: Crypter;
+        let block_size: usize;
+
+        match self.cipher_info.lock() {
+            Ok(c) => {
+                let ci = &*c;
+                encrypter = match Crypter::new(ci.cipher, Mode::Encrypt, &ci.key, Some(&ci.iv)) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        let ret = format!(
+                            "project \"{}\" create Crypter for encrypt {} with key={} iv={} failed\n{:?}",
+                            self.name(),
+                            hex::encode(input),
+                            hex::encode(&ci.key),
+                            hex::encode(&ci.iv),
+                            e
+                        );
+                        debug!("{}", ret);
+                        return Err(ret);
+                    }
+                };
+                block_size = ci.cipher.block_size();
+            }
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" try to lock cipher_info failed, {:?}",
+                    self.name(),
+                    e
+                );
+                error!("{}", ret);
+                return Err(ret);
+            }
+        }
+
+        encrypter.pad(false);
+        let mut plaintext = vec![0; padded_input.len() + block_size];
+        let mut plaintext_count = match encrypter.update(&padded_input, &mut plaintext) {
+            Ok(x) => x,
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" encrypt {} update failed\n{:?}",
+                    self.name(),
+                    hex::encode(input),
+                    e
+                );
+                debug!("{}", ret);
+                return Err(ret);
+            }
+        };
+
+        plaintext_count += match encrypter.finalize(&mut plaintext[plaintext_count..]) {
+            Ok(x) => x,
+            Err(e) => {
+                let ret = format!(
+                    "project \"{}\" encrypt {} finalize failed\n{:?}",
+                    self.name(),
+                    hex::encode(input),
+                    e
+                );
+                debug!("{}", ret);
+                return Err(ret);
+            }
+        };
+
+        plaintext.truncate(plaintext_count);
+        Ok(plaintext)
+    }
+
+    pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {
+        // msg_encrypt = Base64_Encode(AES_Encrypt(rand_msg))
+        match self.encrypt_msg_raw(&input) {
+            Ok(x) => Ok(base64::encode(&x)),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn make_msg_signature(&self, timestamp: &str, nonce: &str, msg_encrypt: &str) -> String {
+        // GET http://api.3dept.com/?msg_signature=ASDFQWEXZCVAQFASDFASDFSS&timestamp=13500001234&nonce=123412323&echostr=ENCRYPT_STR
+        // dev_msg_signature=sha1(sort(token、timestamp、nonce、msg_encrypt))
+        // sort的含义是将参数值按照字母字典排序，然后从小到大拼接成一个字符串
+        // sha1处理结果要编码为可见字符，编码的方式是把每字节散列值打印为%02x（即16进制，C printf语法）格式，全部小写
+        let mut datas = [self.token.as_str(), timestamp, nonce, msg_encrypt];
+        datas.sort();
+        let cat_str = datas.concat();
+
+        let hash_res = ring::digest::digest(&ring::digest::SHA1, cat_str.as_bytes());
+        hex::encode(hash_res.as_ref())
+    }
+
+    pub fn check_msg_signature(
+        &self,
+        excepted_signature: &str,
+        timestamp: &str,
+        nonce: &str,
+        msg_encrypt: &str,
+    ) -> bool {
+        let real_signature = self.make_msg_signature(&timestamp, &nonce, &msg_encrypt);
+        debug!("project \"{}\" try to check msg signature: excepted_signature={}, timestamp={}, nonce={}, msg_encrypt={}, real_signature={}", self.name(), excepted_signature, timestamp, nonce, msg_encrypt, real_signature);
+        if real_signature.as_str() == excepted_signature {
+            true
+        } else {
+            error!(
+                "project \"{}\" check signature failed, except {}, reas is {}",
+                self.name(),
+                excepted_signature,
+                real_signature
+            );
+            false
+        }
+    }
+
+    fn alloc_nonce(&self) -> String {
+        let ret = self.nonce.fetch_add(1, Ordering::SeqCst);
+        let mut buf = [0; 8];
+        BigEndian::write_u64(&mut buf, ret as u64);
+        hex::encode(buf)
+    }
+
+    fn alloc_random_str(&self) -> String {
+        use openssl::rand::rand_bytes;
+        let mut buf = [0; 8];
+        let _ = rand_bytes(&mut buf);
+        hex::encode(buf)
+    }
+
+    pub fn make_xml_response(&self, msg_text: String) -> HttpResponse {
+        debug!(
+            "project \"{}\" start to encrypt message to base64\n{}",
+            self.name(),
+            msg_text
+        );
+        let msg_encrypt = match self.encrypt_msg_raw_base64(msg_text.as_bytes()) {
+            Ok(x) => x,
+            Err(e) => {
+                error!(
+                    "project \"{}\" encrypt_msg_raw_base64 {} failed: {}",
+                    self.name(),
+                    msg_text,
+                    e
+                );
+
+                return HttpResponse::Forbidden()
+                    .content_type("application/xml")
+                    .body(message::get_robot_response_access_deny_content(e.as_str()));
+            }
+        };
+
+        let nonce = self.alloc_nonce();
+        let timestamp = if let Ok(x) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            x.as_secs().to_string()
+        } else {
+            String::from("0")
+        };
+        let msg_signature =
+            self.make_msg_signature(timestamp.as_str(), nonce.as_str(), msg_encrypt.as_str());
+
+        match message::pack_message_response(msg_encrypt, msg_signature, timestamp, nonce) {
+            Ok(x) => HttpResponse::Ok().content_type("application/xml").body(x),
+            Err(e) => {
+                error!(
+                    "project \"{}\" make_xml_response failed: {}",
+                    self.name(),
+                    e
+                );
+
+                HttpResponse::Forbidden()
+                    .content_type("application/xml")
+                    .body(message::get_robot_response_access_deny(e))
+            }
+        }
+    }
+
+    pub fn make_text_response(&self, msg: message::WXWorkMessageTextRsp) -> HttpResponse {
+        let rsp_xml = match message::pack_text_message(msg) {
+            Ok(x) => x,
+            Err(e) => {
+                error!(
+                    "project \"{}\" make_text_response failed: {}",
+                    self.name(),
+                    e
+                );
+
+                return self.make_xml_response(e);
+            }
+        };
+
+        self.make_xml_response(rsp_xml)
+    }
+
+    pub fn make_markdown_response(&self, msg: message::WXWorkMessageMarkdownRsp) -> HttpResponse {
+        let rsp_xml = match message::pack_markdown_message(msg) {
+            Ok(x) => x,
+            Err(e) => {
+                error!(
+                    "project \"{}\" make_markdown_response failed: {}",
+                    self.name(),
+                    e
+                );
+
+                return self.make_xml_response(e);
+            }
+        };
+
+        self.make_xml_response(rsp_xml)
+    }
+
+    pub fn make_error_response(&self, msg: String) -> HttpResponse {
+        self.make_markdown_response(message::WXWorkMessageMarkdownRsp { content: msg })
+    }
+
+    pub fn make_markdown_response_with_text(&self, msg: String) -> HttpResponse {
+        self.make_markdown_response(message::WXWorkMessageMarkdownRsp { content: msg })
+    }
+}

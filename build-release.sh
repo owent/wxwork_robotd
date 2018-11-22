@@ -7,20 +7,16 @@ cd "$(dirname $0)";
 SCRIPT_DIR="$PWD";
 BIN_NAME="wxwork_robotd";
 
-OPENSSL_URL=https://www.openssl.org/source/openssl-1.1.0h.tar.gz;
+OPENSSL_URL=https://www.openssl.org/source/openssl-1.1.1a.tar.gz;
 OPENSSL_PKG=$(basename $OPENSSL_URL);
+PREPARED_CROSS=0;
 
 BUILD_TARGETS=(
-    "ENABLE_CROSS_COMPILE=0 TARGET_ARCH=x86_64-unknown-linux-gnu"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=x86_64-unknown-linux-musl"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=aarch64-unknown-linux-gnu"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=arm-unknown-linux-musleabi"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=armv7-unknown-linux-musleabihf"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=i686-unknown-freebsd"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=i686-unknown-linux-musl"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=mips-unknown-linux-gnu"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=mips64-unknown-linux-gnuabi64"
-    "ENABLE_CROSS_COMPILE=1 TARGET_ARCH=x86_64-unknown-freebsd"
+    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=x86_64-unknown-linux-musl"
+    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=aarch64-unknown-linux-musl"
+    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=armv7-unknown-linux-musleabihf"
+    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=i686-unknown-linux-musl"
+    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=mips-unknown-linux-musl"
 );
 
 # BUILD_TARGETS=(
@@ -35,8 +31,28 @@ BUILD_TARGETS=(
 # );
 
 function get_openssl_pkg() {
-    if [ ! -e "$SCRIPT_DIR/$OPENSSL_PKG" ]; then
-        wget --no-check-certificate $OPENSSL_URL -O "$SCRIPT_DIR/$OPENSSL_PKG";
+    if [ ! -e "$SCRIPT_DIR/target/openssl/$OPENSSL_PKG" ]; then
+        wget --no-check-certificate $OPENSSL_URL -O "$SCRIPT_DIR/target/openssl/$OPENSSL_PKG";
+    fi
+}
+
+function build_musl_openssl() {
+    CROSS_COMPILE_TARGET="$1";
+    OPENSSL_PREBUILT_DIR="$SCRIPT_DIR/target/openssl/$CROSS_COMPILE_TARGET";
+    if [ ! -e "$OPENSSL_PREBUILT_DIR" ]; then
+        mkdir -p "$SCRIPT_DIR/target/openssl";
+        get_openssl_pkg;
+        cd "$SCRIPT_DIR/target/openssl";
+        tar -axvf $OPENSSL_PKG;
+        cd ${OPENSSL_PKG//.tar.*};
+        # env LDFLAGS="-static -static-libgcc" ./config no-hw no-rc4 no-deprecated no-shared no-dso no-ssl3 --prefix=$OPENSSL_PREBUILT_DIR --openssldir=$OPENSSL_PREBUILT_DIR/ssl ;
+        env CC=musl-gcc ./config no-hw no-rc4 no-deprecated no-shared no-dso no-ssl3 --prefix=$OPENSSL_PREBUILT_DIR --openssldir=$OPENSSL_PREBUILT_DIR/ssl ;
+        make -j4;
+        make install;
+
+        if [ 0 -ne $? ]; then
+            echo -e "\033[1;31mWe require cross-gcc-dev, musl, musl-dev, musl-tools to do this.\033[0m";
+        fi
     fi
 }
 
@@ -56,7 +72,35 @@ function build_for_arch() {
         ENABLE_CROSS_COMPILE=0;
     fi
 
+    if [ -z "$USING_MUSL_TOOLCHAIN" ]; then
+        USING_MUSL_TOOLCHAIN=0;
+    fi
+
     echo "ENABLE_CROSS_COMPILE=$ENABLE_CROSS_COMPILE";
+
+    if [ $USING_MUSL_TOOLCHAIN -eq 0 ] && [ $ENABLE_CROSS_COMPILE -ne 0 ]; then
+        which xargo > /dev/null;
+        if [ $? -ne 0 ]; then
+            cargo install xargo;
+        fi
+
+        which cross > /dev/null;
+        if [ $? -ne 0 ]; then
+
+            cargo install cross;
+            if [ 0 -ne $? ]; then
+                echo -e "\033[1;31mTry to install cross by 'cargo install cross' failed.";
+                echo "Please try to use these command to install docker first(depend on your system):
+    sudo pacman -S -s docker docker-compose
+    sudo apt install docker docker-compose
+    sudo yum install docker
+    sudo dnf install docker docker-compose
+                
+    See https://github.com/rust-embedded/cross for detail.";
+            fi
+        fi
+    fi
+
     # return;
 
     # rustup target add --toolchain stable $TARGET_ARCH;
@@ -74,7 +118,10 @@ function build_for_arch() {
 
     # build $BIN_NAME
     # cargo clean; 
-    if [ $ENABLE_CROSS_COMPILE -ne 0 ]; then
+    if [ $USING_MUSL_TOOLCHAIN -ne 0 ]; then
+        build_musl_openssl $TARGET_ARCH;
+        env PKG_CONFIG_ALL_STATIC=1 OPENSSL_STATIC=1 PKG_CONFIG_ALLOW_CROSS=1 OPENSSL_DIR=$SCRIPT_DIR/target/openssl/$CROSS_COMPILE_TARGET cargo build --release $CROSS_COMPILE_TARGET;
+    elif [ $ENABLE_CROSS_COMPILE -ne 0 ]; then
         cross build $CROSS_COMPILE_TARGET --release --features system-alloc ;
     else
         env PKG_CONFIG_ALL_STATIC=1 cargo build --release $CROSS_COMPILE_TARGET;
@@ -86,45 +133,40 @@ function build_for_arch() {
     fi
 
     cd "$SCRIPT_DIR";
-    cp -f target/${CROSS_COMPILE_DIR}/release/${BIN_NAME} ./${BIN_NAME}-${CROSS_COMPILE_DIR} ;
+    if [ -e target/${CROSS_COMPILE_DIR}/release/etc ]; then
+        rm -rf target/${CROSS_COMPILE_DIR}/release/etc;
+    fi
+    cp -rf etc target/${CROSS_COMPILE_DIR}/release/;
+    cd target/${CROSS_COMPILE_DIR}/release/;
+    mkdir -p bin;
+    cp -f ${BIN_NAME} bin/;
 
     which strip > /dev/null 2>&1 ;
     if [ 0 -eq $? ]; then
         echo "Try to strip executable file";
-        strip ./${BIN_NAME}-${CROSS_COMPILE_DIR};
+        strip bin/${BIN_NAME};
         if [ $? -ne 0 ]; then
-            echo -e "\033[33mStrip ${BIN_NAME}-${CROSS_COMPILE_DIR} failed.\033[0m";
+            echo -e "\033[33mStrip ${BIN_NAME} for ${CROSS_COMPILE_DIR} failed.\033[0m";
         fi
     fi
 
-    which upx > /dev/null 2>&1 ;
-    if [ 0 -eq $? ]; then
-        echo "Try to upx executable file";
-        if [ -e "./${BIN_NAME}-${CROSS_COMPILE_DIR}.min" ]; then
-            rm -f "./${BIN_NAME}-${CROSS_COMPILE_DIR}.min";
-        fi
-        upx --ultra-brute -o ./${BIN_NAME}-${CROSS_COMPILE_DIR}.min ./${BIN_NAME}-${CROSS_COMPILE_DIR};
-        if [ $? -ne 0 ]; then
-            echo -e "\033[33mZip exe file ${BIN_NAME}-${CROSS_COMPILE_DIR} failed.\033[0m";
-        fi
-    fi
+    # which upx > /dev/null 2>&1 ;
+    # if [ 0 -eq $? ]; then
+    #     echo "Try to upx executable file";
+    #     if [ -e "./${BIN_NAME}-${CROSS_COMPILE_DIR}.min" ]; then
+    #         rm -f "./${BIN_NAME}-${CROSS_COMPILE_DIR}.min";
+    #     fi
+    #     upx --ultra-brute -o ./${BIN_NAME}-${CROSS_COMPILE_DIR}.min ./${BIN_NAME}-${CROSS_COMPILE_DIR};
+    #     if [ $? -ne 0 ]; then
+    #         echo -e "\033[33mZip exe file ${BIN_NAME}-${CROSS_COMPILE_DIR} failed.\033[0m";
+    #     fi
+    # fi
 
+    tar -Jcvf ${BIN_NAME}-${CROSS_COMPILE_DIR}.tar.xz etc bin;
+    cd "$SCRIPT_DIR";
+    mv -f target/${CROSS_COMPILE_DIR}/release/${BIN_NAME}-${CROSS_COMPILE_DIR}.tar.xz ./;
     echo -e "\033[32mBuild ${BIN_NAME}-${CROSS_COMPILE_DIR} done.\033[0m";
 }
-
-which xargo > /dev/null;
-if [ $? -ne 0 ]; then
-    cargo install xargo;
-fi
-
-which cross > /dev/null;
-if [ $? -ne 0 ]; then
-    # sudo pacman -S -s docker docker-compose
-    # sudo apt install docker docker-compose
-    # sudo yum install docker
-    # sudo dnf install docker docker-compose
-    cargo install cross;
-fi
 
 for COMPILE_OPTIONS in "${BUILD_TARGETS[@]}"; do
     build_for_arch $COMPILE_OPTIONS;

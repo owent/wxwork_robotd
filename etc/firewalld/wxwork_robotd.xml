@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>wxwork_robotd</short>
+  <description>wxwork_robotd</description>
+  <port protocol="tcp" port="12019" />
+</service>

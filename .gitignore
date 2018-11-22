@@ -4,6 +4,7 @@
 /target
 **/*.rs.bk
 *.log.*
+*.dll
 
 wxwork_robotd.pid
 /wxwork_robotd-*

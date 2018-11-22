@@ -41,13 +41,23 @@ impl FileRotateLogger {
         let file_path = get_log_path(self.file_path.as_str(), runtime.current_rotate);
 
         let mut options = OpenOptions::new();
-        options.create(true).append(true).truncate(true);
-        if let Ok(file) = options.open(file_path) {
-            runtime.current_file = Some(file);
-            runtime.current_size = 0;
-        }
+        options.write(true).create(true).truncate(true);
+        match options.open(file_path.as_str()) {
+            Ok(file) => {
+                runtime.current_file = Some(file);
+                runtime.current_size = 0;
 
-        true
+                if self.level >= Level::Debug {
+                    println!("Open new log file {} success", file_path)
+                }
+
+                true
+            }
+            Err(e) => {
+                eprintln!("Try to open log file {} failed: {:?}", file_path, e);
+                false
+            }
+        }
     }
 }
 
@@ -97,19 +107,45 @@ impl Log for FileRotateLogger {
                 }
 
                 if runtime.current_size >= self.rotate_size {
+                    if self.level >= Level::Debug {
+                        println!(
+                            "Old log file {} success with size {} is greater than the rotate size {}, try to use new log file",
+                            full_file_path, runtime.current_size, self.rotate_size
+                        )
+                    }
+
                     self.next_file(&mut runtime);
+                } else {
+                    if self.level >= Level::Debug {
+                        println!(
+                            "Open old log file {} success with size {}(less than the rotate size {})",
+                            full_file_path, runtime.current_size, self.rotate_size
+                        )
+                    }
                 }
             }
 
             let mut written_len = 0;
             if let Some(ref mut file) = runtime.current_file {
-                let content = format!(
-                    "{} {:<5} [{}] {}\n",
-                    time::strftime("%Y-%m-%d %H:%M:%S", &time::now()).unwrap(),
-                    record.level().to_string(),
-                    record.module_path().unwrap_or_default(),
-                    record.args(),
-                );
+                let content = if record.file().is_some() && record.line().is_some() {
+                    format!(
+                        "{} {:<5} [{}:{}@{}] {}\n",
+                        time::strftime("%Y-%m-%d %H:%M:%S", &time::now()).unwrap(),
+                        record.level().to_string(),
+                        record.file().unwrap(),
+                        record.line().unwrap(),
+                        record.module_path().unwrap_or_default(),
+                        record.args(),
+                    )
+                } else {
+                    format!(
+                        "{} {:<5} [{}] {}\n",
+                        time::strftime("%Y-%m-%d %H:%M:%S", &time::now()).unwrap(),
+                        record.level().to_string(),
+                        record.module_path().unwrap_or_default(),
+                        record.args(),
+                    )
+                };
 
                 if let Ok(len) = file.write(content.as_bytes()) {
                     written_len = len;

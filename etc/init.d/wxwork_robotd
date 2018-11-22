@@ -1,0 +1,128 @@
+#!/bin/bash
+#
+# wxwork_robotd <summary>
+#
+# chkconfig:   2345 80 20
+# description: Starts and stops a single wxwork_robotd instance on this system
+#
+
+### BEGIN INIT INFO
+# Provides: wxwork_robotd
+# Required-Start: $network $named
+# Required-Stop: $network $named
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: This service manages the wxwork_robotd daemon
+# Description: wxwork_robotd is a very scalable, schema-free and high-performance search solution supporting multi-tenancy and near realtime search.
+### END INIT INFO
+
+#
+# init.d / servicectl compatibility (openSUSE)
+#
+if [ -f /etc/rc.status ]; then
+    . /etc/rc.status
+    rc_reset
+fi
+
+#
+# Source function library.
+#
+if [ -f /etc/rc.d/init.d/functions ]; then                                                                                                                                 
+    . /etc/rc.d/init.d/functions
+fi
+
+WXWORK_ROBOTD_HOME=/usr/local/wxwork_robotd
+WXWORK_ROBOTD_ETC=$WXWORK_ROBOTD_HOME/etc/conf.json
+PID_DIR=$WXWORK_ROBOTD_HOME/run
+LOG_DIR=$WXWORK_ROBOTD_HOME/log
+USER=wxwork_robot
+GROUP=wxwork_robot
+
+exec="$WXWORK_ROBOTD_HOME/bin/wxwork_robotd"
+prog="wxwork_robotd"
+pidfile="$PID_DIR/${prog}.pid"
+lockfile="$PID_DIR/${prog}.lock"
+
+if [ ! -x "$exec" ]; then
+    echo "The wxwork_robotd startup script does not exists or it is not executable, tried: $exec"
+    exit 1
+fi
+
+start() {
+    # Ensure that the PID_DIR exists (it is cleaned at OS startup time)
+    if [ -n "$PID_DIR" ] && [ ! -e "$PID_DIR" ]; then
+        mkdir -p "$PID_DIR" && chown $USER:$GROUP "$PID_DIR"
+    fi
+    if [ -n "$LOG_DIR" ] && [ ! -e "$LOG_DIR" ]; then
+        mkdir -p "$LOG_DIR" && chown $USER:$GROUP "$LOG_DIR"
+    fi
+    if [ -n "$pidfile" ] && [ ! -e "$pidfile" ]; then
+        touch "$pidfile" && chown $USER:$GROUP "$pidfile"
+    fi
+
+    cd $WXWORK_ROBOTD_HOME
+    echo -n $"Starting $prog: "
+    # if not running, start it up here, usually something like "daemon $exec"
+    daemon --user $USER --pidfile $pidfile $exec --pid-file "$pidfile" -c "$WXWORK_ROBOTD_ETC" --log "$LOG_DIR/wxwork_robotd.log" &
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile && chown $USER:$GROUP $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    # stop it here, often "killproc $prog"
+    killproc -p $pidfile -d 86400 $prog
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+rh_status() {
+    # run checks to determine if the service is running or use generic status
+    status -p $pidfile $prog
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        reload || exit 7
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart}"
+        exit 2
+esac
+exit $?

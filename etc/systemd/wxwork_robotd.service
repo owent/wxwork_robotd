@@ -1,0 +1,20 @@
+[Unit]
+Description=WXWorkRobotd Service
+After=network.target
+Wants=network.target
+
+[Service]
+# This service runs as root. You may consider to run it as another user for security concerns.
+# By uncommenting the following two lines, this service will run as user wxwork_robot/wxwork_robot.
+# User=wxwork_robot
+# Group=wxwork_robot
+Type=simple
+Environment="WXWORK_ROBOTD_HOME=/usr/local/wxwork_robotd" "WXWORK_ROBOTD_ETC=/usr/local/wxwork_robotd/etc/conf.json"
+PIDFile=$WXWORK_ROBOTD_HOME/run/wxwork_robotd.pid
+ExecStart=$WXWORK_ROBOTD_HOME/bin/wxwork_robotd --pid-file "$WXWORK_ROBOTD_HOME/run/wxwork_robotd.pid" -c "$WXWORK_ROBOTD_ETC" --log "$WXWORK_ROBOTD_HOME/log/wxwork_robotd.log"
+Restart=on-failure
+# Don't restart in the case of configuration error
+RestartPreventExitStatus=23
+
+[Install]
+WantedBy=multi-user.target
