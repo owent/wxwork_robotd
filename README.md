@@ -53,7 +53,7 @@
             "description": "说**消息内容**"
         },
         "执行命令\\s*(?P<EXEC>[^\\s]+)\\s*(?P<PARAM>[^\\s]*)": {
-            "type": "spawn",                    // 启动子进程执行命令，如果子进程的执行时间超过 taskTimeout ，则会被kill掉
+            "type": "spawn",                    // 启动子进程执行命令，注意，任务超时并不会被kill掉
             "exec": "{{WXWORK_ROBOT_CMD_EXEC}}",
             "args": ["{{WXWORK_ROBOT_CMD_PARAM}}"],
             "cwd": "",
