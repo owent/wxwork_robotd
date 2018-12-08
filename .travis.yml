@@ -122,11 +122,11 @@ matrix:
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-netbsd
-    # Solaris
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
+    # # Solaris
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then ulimit -a; sysctl -a; sudo apt-get -qq update; fi
@@ -139,9 +139,9 @@ before_install:
 
     else
 
-      cargo install xargo;
+      cargo install xargo --force;
       
-      cargo install cross;
+      cargo install cross --force;
 
     fi
 
