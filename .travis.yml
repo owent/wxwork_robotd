@@ -4,13 +4,14 @@ services: docker
 
 env:
   global:
+    - RUST_BACKTRACE=1
     - LANG="zh_CN.UTF-8"
 
 matrix:
   include:
     # OSX
     - os: osx
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=i686-apple-darwin
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-apple-darwin
     - os: osx
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-apple-darwin
     # linux
@@ -29,7 +30,7 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=i686-unknown-linux-gnu
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
@@ -120,17 +121,8 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-dragonfly
-    - os: linux
-      dist: xenial
-      sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-netbsd
     # Solaris
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
-    # Windows
     - os: linux
       dist: xenial
       sudo: required

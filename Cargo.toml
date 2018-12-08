@@ -24,7 +24,6 @@ lazy_static = "^1.2.0"
 # openssl = { version = ">=0.10.15", feature = ["vendored"] }
 openssl = { version = ">=0.10.15" }
 # openssl-sys = ">=0.9.39"
-ring = ">=0.13.5"
 byteorder = "^1.2.7"
 
 [dependencies.clap]
