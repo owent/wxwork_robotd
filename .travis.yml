@@ -1,0 +1,192 @@
+language: rust
+rust: stable
+services: docker
+
+env:
+  global:
+    - LANG="zh_CN.UTF-8"
+
+matrix:
+  include:
+    # OSX
+    - os: osx
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=i686-apple-darwin
+    - os: osx
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-apple-darwin
+    # linux
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-gnueabi
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-unknown-linux-gnueabihf
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=i686-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mips-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mipsel-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mips64-unknown-linux-gnuabi64
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mips64el-unknown-linux-gnuabi64
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=powerpc-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=powerpc64-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=powerpc64le-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-musleabihf
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-musleabi
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-unknown-linux-musleabihf
+    # linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=mips-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=mipsel-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-linux-musl
+    # Android
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-linux-android
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-linux-androideabi  
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-linux-androideabi
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=i686-linux-android
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=x86_64-linux-android
+    # BSD
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-dragonfly
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-netbsd
+    # Solaris
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
+    # Windows
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then ulimit -a; sysctl -a; sudo apt-get -qq update; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
+  - rustup self update;
+  - rustup update --force stable;
+  - if [ $USING_CROSS -eq 0 ]; then
+
+      rustup target install $TARGET ;
+
+    else
+
+      cargo install xargo;
+      
+      cargo install cross;
+
+    fi
+
+script:
+  - if [ $USING_SYSTEM_ALLOC -eq 0 ]; then 
+    
+      BUILD_WITH_SYSTEM_ALLOC="";
+
+    else
+
+      BUILD_WITH_SYSTEM_ALLOC=" --features system-alloc";
+
+    fi
+  - if [ $USING_CROSS -eq 0 ]; then
+
+      env PKG_CONFIG_ALL_STATIC=1 cargo build --release --target $TARGET $BUILD_WITH_SYSTEM_ALLOC ;
+
+    else
+
+      cross build --target $TARGET --release $BUILD_WITH_SYSTEM_ALLOC
+
+    fi
+
+cache: cargo
+
+branches:
+  only:
+    - dev
+    - pub
+
+notifications:
+  email:
+    recipients:
+      - admin@owent.net
+      - owt5008137@live.com
+    on_success: never
+    on_failure: never
+  irc:
+    template:
+      - "%{repository}/%{branch} (%{commit} - %{author}): %{build_url}: %{message}"
