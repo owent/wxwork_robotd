@@ -178,7 +178,7 @@ cache: cargo
 branches:
   only:
     - dev
-    - pub
+    - master
 
 notifications:
   email:
