@@ -135,7 +135,9 @@ before_install:
   - rustup update --force stable;
   - if [ $USING_CROSS -eq 0 ]; then
 
-      rustup target install $TARGET ;
+      rustup target install $TARGET --force ;
+
+      rustup toolchain install stable-$TARGET --force ;
 
     else
 

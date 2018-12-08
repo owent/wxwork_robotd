@@ -26,6 +26,9 @@ openssl = { version = ">=0.10.15" }
 # openssl-sys = ">=0.9.39"
 byteorder = "^1.2.7"
 
+# fix version for dependencies
+mio-uds = "^0.6.7"
+
 [dependencies.clap]
 version = "^2.32.0"
 default-features = false
