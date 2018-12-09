@@ -28,7 +28,7 @@ matrix:
     - env: USING_TRUST=1 TARGET=i386-apple-ios
       os: osx
     - env: USING_TRUST=1 TARGET=x86_64-apple-ios
-os: osx
+      os: osx
     # linux
     - os: linux
       dist: xenial
