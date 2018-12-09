@@ -4,16 +4,31 @@ services: docker
 
 env:
   global:
+    - CRATE_NAME=wxwork_robotd
+    - DISABLE_TESTS=1
     - RUST_BACKTRACE=1
     - LANG="zh_CN.UTF-8"
+    - USING_CROSS=0
+    - USING_TRUST=0
 
 matrix:
   include:
     # OSX
     - os: osx
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-apple-darwin
+      env: USING_TRUST=1 TARGET=i686-apple-darwin
     - os: osx
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-apple-darwin
+    # ios
+    - env: USING_TRUST=1 TARGET=aarch64-apple-ios
+      os: osx
+    - env: USING_TRUST=1 TARGET=armv7-apple-ios
+      os: osx
+    - env: USING_TRUST=1 TARGET=armv7s-apple-ios
+      os: osx
+    - env: USING_TRUST=1 TARGET=i386-apple-ios
+      os: osx
+    - env: USING_TRUST=1 TARGET=x86_64-apple-ios
+os: osx
     # linux
     - os: linux
       dist: xenial
@@ -34,31 +49,31 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mips-unknown-linux-gnu
+      env: USING_TRUST=1 TARGET=mips-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mipsel-unknown-linux-gnu
+      env: USING_TRUST=1 TARGET=mipsel-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mips64-unknown-linux-gnuabi64
+      env: USING_TRUST=1 TARGET=mips64-unknown-linux-gnuabi64
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=mips64el-unknown-linux-gnuabi64
+      env: USING_TRUST=1 TARGET=mips64el-unknown-linux-gnuabi64
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=powerpc-unknown-linux-gnu
+      env: USING_TRUST=1 TARGET=powerpc-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=powerpc64-unknown-linux-gnu
+      env: USING_TRUST=1 TARGET=powerpc64-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=powerpc64le-unknown-linux-gnu
+      env: USING_TRUST=1 TARGET=powerpc64le-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
@@ -66,19 +81,19 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-unknown-linux-musl
+      env: USING_TRUST=1 TARGET=aarch64-unknown-linux-musl
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-musleabihf
+      env: USING_TRUST=1 TARGET=arm-unknown-linux-musleabihf
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-musleabi
+      env: USING_TRUST=1 TARGET=arm-unknown-linux-musleabi
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-unknown-linux-musleabihf
+      env: USING_TRUST=1 TARGET=armv7-unknown-linux-musleabihf
     # linux-musl
     - os: linux
       dist: xenial
@@ -87,11 +102,11 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=mips-unknown-linux-musl
+      env: USING_TRUST=1 TARGET=mips-unknown-linux-musl
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=mipsel-unknown-linux-musl
+      env: USING_TRUST=1 TARGET=mipsel-unknown-linux-musl
     - os: linux
       dist: xenial
       sudo: required
@@ -100,7 +115,7 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-linux-android
+      env: USING_TRUST=1 TARGET=aarch64-linux-android
     - os: linux
       dist: xenial
       sudo: required
@@ -127,25 +142,41 @@ matrix:
     #   dist: xenial
     #   sudo: required
     #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
+    # Windows
+    - env: TARGET=x86_64-pc-windows-gnu
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then ulimit -a; sysctl -a; sudo apt-get -qq update; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
   - rustup self update;
   - rustup update --force stable;
-  - if [ $USING_CROSS -eq 0 ]; then
+  - if [ $USING_TRUST -ne 0 ]; then
 
-      rustup target install $TARGET --force ;
+      set -e ;
 
-      rustup toolchain install stable-$TARGET --force ;
-
-    else
+    elif [ $USING_CROSS -ne 0 ]; then
 
       cargo install xargo --force;
       
       cargo install cross --force;
 
+    else
+
+      rustup target add $TARGET ;
+
+      rustup toolchain install stable-$TARGET ;
+
     fi
+
+install:
+  - if [ $USING_TRUST -ne 0 ]; then
+
+      bash ci/install.sh ;
+
+      source ~/.cargo/env || true ;
+
+    fi
+
 
 script:
   - if [ $USING_SYSTEM_ALLOC -eq 0 ]; then 
@@ -157,13 +188,17 @@ script:
       BUILD_WITH_SYSTEM_ALLOC=" --features system-alloc";
 
     fi
-  - if [ $USING_CROSS -eq 0 ]; then
+  - if [ $USING_TRUST -ne 0 ]; then
 
-      env PKG_CONFIG_ALL_STATIC=1 cargo build --release --target $TARGET $BUILD_WITH_SYSTEM_ALLOC ;
+      bash ci/script.sh ;
+
+    elif [ $USING_CROSS -ne 0 ]; then
+
+      cross build --target $TARGET --release $BUILD_WITH_SYSTEM_ALLOC ;
 
     else
 
-      cross build --target $TARGET --release $BUILD_WITH_SYSTEM_ALLOC
+      env PKG_CONFIG_ALL_STATIC=1 cargo build --release --target $TARGET $BUILD_WITH_SYSTEM_ALLOC ;
 
     fi
 
