@@ -3,6 +3,7 @@ passthrough = [
     "RUST_BACKTRACE",
     "RUST_LOG",
     "TRAVIS",
+    "PKG_CONFIG_ALL_STATIC",
 ]
 
 # [target.i686-apple-darwin]
