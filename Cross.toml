@@ -3,4 +3,51 @@ passthrough = [
     "RUST_BACKTRACE",
     "RUST_LOG",
     "TRAVIS",
+    "PKG_CONFIG_ALL_STATIC",
 ]
+
+# [target.i686-apple-darwin]
+# xargo = true
+# 
+# [target.mips-unknown-linux-gnu]
+# xargo = true
+# 
+# [target.mipsel-unknown-linux-gnu]
+# xargo = true
+# 
+# [target.mips64-unknown-linux-gnuabi64]
+# xargo = true
+# 
+# [target.mips64el-unknown-linux-gnuabi64]
+# xargo = true
+# 
+# [target.powerpc-unknown-linux-gnu]
+# xargo = true
+# 
+# [target.powerpc64-unknown-linux-gnu]
+# xargo = true
+# 
+# [target.powerpc64le-unknown-linux-gnu]
+# xargo = true
+# 
+# [target.aarch64-unknown-linux-musl]
+# xargo = true
+# 
+# [target.arm-unknown-linux-musleabihf]
+# xargo = true
+# 
+# [target.arm-unknown-linux-musleabi]
+# xargo = true
+# 
+# [target.armv7-unknown-linux-musleabihf]
+# xargo = true
+# 
+# [target.mips-unknown-linux-musl]
+# xargo = true
+# 
+# [target.mipsel-unknown-linux-musl]
+# xargo = true
+# 
+# [target.aarch64-linux-android]
+# xargo = true
+# rustflags = ["-A", "E0308"]

@@ -2,7 +2,7 @@ use openssl::symm::{Cipher, Crypter, Mode};
 //use openssl::hash::{Hasher, MessageDigest};
 use actix_web::HttpResponse;
 use byteorder::{BigEndian, ByteOrder};
-use ring;
+use openssl::hash;
 
 use serde_json;
 use std::collections::HashMap;
@@ -552,8 +552,11 @@ impl WXWorkProject {
         datas.sort();
         let cat_str = datas.concat();
 
-        let hash_res = ring::digest::digest(&ring::digest::SHA1, cat_str.as_bytes());
-        hex::encode(hash_res.as_ref())
+        let hash_res = hash::hash(hash::MessageDigest::sha1(), cat_str.as_bytes());
+        match hash_res {
+            Ok(x) => hex::encode(x.as_ref()),
+            Err(e) => format!("Sha1 for {} failed, {:?}", cat_str, e),
+        }
     }
 
     pub fn check_msg_signature(
