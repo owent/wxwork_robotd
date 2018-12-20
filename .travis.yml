@@ -233,11 +233,6 @@ script:
 
 cache: cargo
 
-branches:
-  only:
-    - master
-    - /v\d+(\.\d+[a-z])+/
-
 deploy:
   provider: releases
   api_key:

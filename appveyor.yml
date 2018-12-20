@@ -1,0 +1,90 @@
+version: 1.0.{build}
+
+image: Visual Studio 2017
+environment:
+  RUST_VERSION: stable
+  matrix:
+  - TARGET: i686-pc-windows-gnu
+    BITS: 32
+  - TARGET: x86_64-pc-windows-gnu
+    BITS: 64
+  - TARGET: i686-pc-windows-msvc
+    VCPKG_DEFAULT_TRIPLET: x86-windows
+    VCPKGRS_DYNAMIC: 1
+  - TARGET: x86_64-pc-windows-msvc
+    VCPKG_DEFAULT_TRIPLET: x64-windows
+    VCPKGRS_DYNAMIC: 1
+install:
+- ps: >-
+    If ($Env:TARGET -eq 'x86_64-pc-windows-gnu') {
+        $Env:PATH += ';C:\msys64\mingw64\bin'
+    } ElseIf ($Env:TARGET -eq 'i686-pc-windows-gnu') {
+        $Env:PATH += ';C:\msys64\mingw32\bin'
+    }
+
+
+
+    if (Test-Path env:\VCPKG_DEFAULT_TRIPLET) {
+        git clone https://github.com/Microsoft/vcpkg c:\projects\vcpkg
+        & "c:/projects/vcpkg/bootstrap-vcpkg.bat"
+        $Env:VCPKG_ROOT="c:/projects/vcpkg"
+        echo yes > "$Env:VCPKG_ROOT/Downloads/AlwaysAllowDownloads"
+        & "$Env:VCPKG_ROOT/vcpkg.exe" install openssl
+    }
+
+
+    Invoke-WebRequest -Uri "https://win.rustup.rs/" -OutFile "rustup-init.exe"
+
+
+    & ./rustup-init.exe -y --default-host $Env:TARGET --default-toolchain $Env:RUST_VERSION
+
+
+    $Env:PATH += ";C:/Users/appveyor/.cargo/bin";
+
+
+    & rustc -Vv
+
+
+    & cargo -V
+cache: C:\Users\appveyor\.cargo\registry
+build_script:
+- ps: >-
+    & cargo build --target $Env:TARGET --release
+
+
+    Copy-Item -Force -Recurse etc "./target/$Env:TARGET/release/"
+
+
+    cd "./target/$Env:TARGET/release/"
+
+
+    mkdir bin
+
+
+    Copy-Item -Force wxwork_robotd.exe bin/
+
+
+    if ( Test-Path "$Env:TARGET.zip" ) { Remove-Item -Force "$Env:TARGET.zip" }
+
+
+    Compress-Archive -DestinationPath "$Env:TARGET.zip" -Path etc,bin
+
+
+    Get-ChildItem
+
+
+    Get-ChildItem -Recurse etc,bin
+
+
+    Copy-Item -Force "$Env:TARGET.zip" ../../../
+
+
+    cd ../../../
+deploy:
+- provider: GitHub
+  auth_token:
+    secure: QLTxqCn45nBBctix62Ca1nSyrhMp4ZR1Rg3vypkaIctqPIaMgP9hpYQAOqQWn3NJsP1y6YJHcNRRX3EwNJ9qWr02m5ksaGQ7Z6S2xc5bjQk=
+  artifact: '*.zip'
+  force_update: true
+  on:
+    branch: master
