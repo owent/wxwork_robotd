@@ -80,11 +80,14 @@ build_script:
 
 
     cd ../../../
+
+artifacts:
+- path: '*.zip'
+  name: release-package
+
 deploy:
 - provider: GitHub
   auth_token:
     secure: pXYJRg9JiTwAA+dSOgtvNDsgRd9dRDHx9LTOT4c4kRWMSEMtOJri1BMfPNuEDxYv
-  artifact: /.*\.zip/
+  artifact: release-package
   force_update: true
-  on:
-    branch: master
