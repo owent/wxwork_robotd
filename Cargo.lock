@@ -1638,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "wxwork_robotd"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "actix-web 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",

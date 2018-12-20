@@ -46,7 +46,7 @@ pub struct WXWorkMessageMarkdownRsp {
 }
 
 lazy_static! {
-    static ref PICK_WEBHOOK_KEY_RULE: Regex = Regex::new("key=(?P<KEY>[\\d\\w\\-_])").unwrap();
+    static ref PICK_WEBHOOK_KEY_RULE: Regex = Regex::new("key=(?P<KEY>[\\d\\w\\-_]+)").unwrap();
 }
 
 pub fn get_msg_encrypt_from_bytes(bytes: Bytes) -> Option<String> {

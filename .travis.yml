@@ -236,23 +236,17 @@ cache: cargo
 branches:
   only:
     - master
-
-before_deploy:
-  # Set up git user name and tag this commit
-  - git config --local user.name owt5008137
-  - git config --local user.email "owt5008137@live.com"
-  - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
-  - git tag $TRAVIS_TAG
+    - /v\d+(\.\d+[a-z])+/
 
 deploy:
   provider: releases
   api_key:
-    secure: iNIX5yzdgFdldUWWQu5FfQZNdM2uVPtAt7Vv8Ugayvq0PHVrntTQXWvhOXR31nqC4h9X1Bjv+MyOzqnqk9A+rEvj2Ae1dUrkmSUSM0rIECOdMdem3UdJCN3ucILccQw2/NAr/c/WZxclByEEzVBKG35vT/c05wIIZ9fXOTCsknllcT77bN32TvnUbo53T5OG7ug/0hLEYaTGZncARSB2DtaSg8QP+dyyIAWrQpsMuoUJVSndW70vO7r5qi35ZvIX0Uw+y52vrWm0PN+EoDA4Cp0HT0ow2G4nzCs9133iuaz03/EgkoPoLboaVguiRcqq1TUAtUNoLmHSYGpw8vYRav7vQqYk+7D7D75Grv2PbzbhBxMRWvCRIpZm+0t6s4VOWhv1ByxFykWX4nJzsNNeeplxvqdLiFXo4V7RvBhJrC1Tf6ubPz6d+LkpoLWHcK1um2Hav48Fb83cIpVgDL1EqLV7yegXBunGvWuXLa1Ap0LfxvMi04h+2qBcoeenJOSdYo3LHJXk6n29w56MQPxp9aHw8uGY/8JF6i2dzm12QUrzcCjSDMQdtZqK226ovo+VKI5VT2Yq6r1BEZN/aF17B6hlhX6jKe12VVeBsKVuG2c8SQ3pth2vgTLg+UDZK9nZ+uTsWR8YO3KFQEqxIg3MY1GozrXrIrKdr3QbDN9UdYU=
+    secure: FpssIbMGTjAG4Ny8TYIKn8vmEhkODR2Bqvx46k8/LDRwDRW+CHilULz8KvdZ66CELCjF9n2a88Msnl5B1PVviLX0H+mw8yqqM04gE/BN2l7cNGR941tBlKnGfnT0CPGuLBX+zKETy+9k8FeluYNDwlCklbI2hnGly2F9vpK55Z337TlTd6LFkJhElv6v3fmGH8LRGV/cen5He7NzgmnFq/lqnNUdE9Cg8LQ8tLc8fOHOAWJAmQzP/stKSoHZWGwp1rgc36im4FSkSrF+2k4vK2GurbTTBjOeI2/wyUxcii29t1ACTQMVCNVO27dUoi4F0jEOzbtX5JYsNO+GL3kFj6FeIGAVo8ogoqDfEEmeAuQA+95SWh/m9VVAWTvdIEbUEH3rxHGs0CAzkrxJOxVKgje+cA+ZRz1DmVle74icLL5tV6pQoHeG2iii3e8tpmmu42ovrp9z5qKSrFyVEmQXyN1fs6T8/t8KL4/1dL0gwmuKNdaXLo8TA8jRCJZNdamhtoa1NnrIoy+XPwoD4/su3s6hyBznvNwki07yIcprCc6ubKipj86KLdbhtkaJlIBR+D98jb1b8ngE2Y+OhsPk5DnbPERn7NbR3bP3KanXw9i/h23R9OkoSwku1hio/n4nx2p9Hjn8wICrtuVCSJnf+SVlRT5uzumig1VgDxWLMaw=
   file: "*.tar.gz"
   skip_cleanup: true
   overwrite: true
   on:
-    repo: owt5008137/wxwork_robotd
+    all_branches: true
     tags: true
 
 notifications:
