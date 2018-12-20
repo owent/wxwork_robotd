@@ -84,7 +84,7 @@ deploy:
 - provider: GitHub
   auth_token:
     secure: QLTxqCn45nBBctix62Ca1nSyrhMp4ZR1Rg3vypkaIctqPIaMgP9hpYQAOqQWn3NJsP1y6YJHcNRRX3EwNJ9qWr02m5ksaGQ7Z6S2xc5bjQk=
-  artifact: '*.zip'
+  artifact: /.*\.zip/
   force_update: true
   on:
     branch: master
