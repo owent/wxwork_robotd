@@ -12,6 +12,8 @@
 + ```projects``` 中的内容可以通过 ```{{WXWORK_ROBOT_PROJECT_<变量名或匹配名>}}``` 来获取。
 + 环境变量只会导出类型为字符串、数字或者布尔值的内容，不支持嵌套内容
 + 可用的环境变量
+  * WXWORK_ROBOT_WEBHOOK_KEY                : 当前消息对应机器人的WebhookURL里的key字段(可用来回发消息)
+  * WXWORK_ROBOT_WEBHOOK_URL                : 当前消息对应机器人的WebhookURL(可用来回发消息)
   * WXWORK_ROBOT_CMD                        : 当前执行命令的完整匹配消息
   * WXWORK_ROBOT_CMD_{VARNAME}              : 当前执行命令的匹配参数（必须是命名匹配式）或配置的环境变量
   * WXWORK_ROBOT_PROJECT_NAME               : 配置的项目名

@@ -8,6 +8,8 @@ use std::io::Cursor;
 
 use actix_web::HttpResponse;
 
+use regex::Regex;
+
 #[derive(Debug, Clone)]
 pub struct WXWorkMessageDec {
     pub content: String,
@@ -23,6 +25,7 @@ pub struct WXWorkMessageFrom {
 
 #[derive(Debug, Clone)]
 pub struct WXWorkMessageNtf {
+    pub web_hook_key: String,
     pub web_hook_url: String,
     pub from: WXWorkMessageFrom,
     pub msg_type: String,
@@ -40,6 +43,10 @@ pub struct WXWorkMessageTextRsp {
 #[derive(Debug, Clone)]
 pub struct WXWorkMessageMarkdownRsp {
     pub content: String,
+}
+
+lazy_static! {
+    static ref PICK_WEBHOOK_KEY_RULE: Regex = Regex::new("key=(?P<KEY>[\\d\\w\\-_])").unwrap();
 }
 
 pub fn get_msg_encrypt_from_bytes(bytes: Bytes) -> Option<String> {
@@ -249,7 +256,22 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         buf.clear();
     }
 
+    let web_hook_key = if let Some(caps) = PICK_WEBHOOK_KEY_RULE.captures(web_hook_url.as_str()) {
+        if let Some(x) = caps.name("KEY") {
+            String::from(x.as_str())
+        } else {
+            String::default()
+        }
+    } else {
+        String::default()
+    };
+
+    if 0 == web_hook_key.len() {
+        error!("We can not get robot key from {}", web_hook_url);
+    }
+
     Some(WXWorkMessageNtf {
+        web_hook_key: web_hook_key,
         web_hook_url: web_hook_url,
         from: WXWorkMessageFrom {
             user_id: from_user_id,
