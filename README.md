@@ -20,10 +20,10 @@
   * WXWORK_ROBOT_PROJECT_TOKEN              : 配置的项目验证token
   * WXWORK_ROBOT_PROJECT_ENCODING_AES_KEY   : 配置的项目base64的aes key
   * WXWORK_ROBOT_PROJECT_{VARNAME}          : 配置的项目中的环境变量
-  * WXWORK_ROBOT_MSG_FROM_USER_ID           : 发消息者的用户id
-  * WXWORK_ROBOT_MSG_FROM_NAME              : 发消息者的用户名称
-  * WXWORK_ROBOT_MSG_FROM_ALIAS             : 发消息者的用户别名
-  * WXWORK_ROBOT_MSG_ID                     : 消息ID
+  * WXWORK_ROBOT_MSG_FROM_USER_ID           : 发消息者的用户id(版本>=0.3.6)
+  * WXWORK_ROBOT_MSG_FROM_NAME              : 发消息者的用户名称(版本>=0.3.6)
+  * WXWORK_ROBOT_MSG_FROM_ALIAS             : 发消息者的用户别名(版本>=0.3.6)
+  * WXWORK_ROBOT_MSG_ID                     : 消息ID(版本>=0.3.6)
   * WXWORK_ROBOT_HTTP_RESPONSE              : HTTP回包(仅 ```type``` 为 http 时的echo字段可用)
 
 

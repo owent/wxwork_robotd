@@ -268,6 +268,14 @@ fn dispatch_robot_message<S: 'static>(
                 serde_json::Value::String(msg_ntf.web_hook_key.clone());
             cmd_match_res.mut_json()["WXWORK_ROBOT_WEBHOOK_URL"] =
                 serde_json::Value::String(msg_ntf.web_hook_url.clone());
+            cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_FROM_USER_ID"] =
+                serde_json::Value::String(msg_ntf.from.user_id.clone());
+            cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_FROM_NAME"] =
+                serde_json::Value::String(msg_ntf.from.name.clone());
+            cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_FROM_ALIAS"] =
+                serde_json::Value::String(msg_ntf.from.alias.clone());
+            cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_ID"] =
+                serde_json::Value::String(msg_ntf.msg_id.clone());
 
             // 填充模板参数json
             let template_vars = proj_obj.generate_template_vars(&cmd_match_res);
