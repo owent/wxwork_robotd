@@ -15,11 +15,19 @@ pub struct WXWorkCommandEcho {
     pub echo: String,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum WXWorkCommandSpawnOutputType {
+    Markdown,
+    Text,
+    Image,
+}
+
 #[derive(Debug, Clone)]
 pub struct WXWorkCommandSpawn {
     pub exec: String,
     pub args: Vec<String>,
     pub cwd: String,
+    pub output_type: WXWorkCommandSpawnOutputType,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -241,6 +249,14 @@ impl WXWorkCommand {
                         exec: exec_field,
                         args: args_field,
                         cwd: cwd_field,
+                        output_type: match read_string_from_json_object(json, "output_type") {
+                            Some(x) => match x.to_lowercase().as_str() {
+                                "text" => WXWorkCommandSpawnOutputType::Text,
+                                "image" => WXWorkCommandSpawnOutputType::Image,
+                                _ => WXWorkCommandSpawnOutputType::Markdown,
+                            },
+                            None => WXWorkCommandSpawnOutputType::Markdown,
+                        },
                     }))
                 }
                 "http" => {

@@ -683,4 +683,21 @@ impl WXWorkProject {
     pub fn make_markdown_response_with_text(&self, msg: String) -> HttpResponse {
         self.make_markdown_response(message::WXWorkMessageMarkdownRsp { content: msg })
     }
+
+    pub fn make_image_response(&self, msg: message::WXWorkMessageImageRsp) -> HttpResponse {
+        let rsp_xml = match message::pack_image_message(msg) {
+            Ok(x) => x,
+            Err(e) => {
+                error!(
+                    "project \"{}\" make_image_response failed: {}",
+                    self.name(),
+                    e
+                );
+
+                return self.make_xml_response(e);
+            }
+        };
+
+        self.make_xml_response(rsp_xml)
+    }
 }

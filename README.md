@@ -71,7 +71,8 @@
             "env": {                            // 命令级环境变量，所有的命令都有这个选项，这些环境变量仅此命令有效
                 "TEST_ENV": "all env key will be WXWORK_ROBOT_CMD_{NAME IN ENV} or WXWORK_ROBOT_PROJECT_{NAME}"
             },
-            "description": "执行命令**可执行文件路径** ***参数***"
+            "description": "执行命令**可执行文件路径** ***参数***",
+            "output_type": "输出类型"            // markdown/text
         }
     },
     "projects": [{                                                          // 项目列表，可以每个项目对应一个机器人，也可以多个机器人共享一个项目

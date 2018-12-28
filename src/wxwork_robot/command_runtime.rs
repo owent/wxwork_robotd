@@ -2,9 +2,13 @@ use actix_web::{AsyncResponder, HttpResponse};
 use futures::future::{ok as future_ok, Either, Future};
 use futures::Stream;
 
+use std::fs::OpenOptions;
+use std::io::{BufReader, Read};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use regex::Regex;
 
 use tokio::util::FutureExt;
 use tokio_process::CommandExt;
@@ -26,6 +30,10 @@ pub struct WXWorkCommandRuntime {
     pub cmd_match: command::WXWorkCommandMatch,
     pub envs: serde_json::Value,
     pub msg: message::WXWorkMessageNtf,
+}
+
+lazy_static! {
+    static ref PICK_AT_RULE: Regex = Regex::new("\\@(?P<AT>[\\B]+)").unwrap();
 }
 
 pub fn get_project_name_from_runtime(runtime: &Arc<WXWorkCommandRuntime>) -> Arc<String> {
@@ -317,6 +325,8 @@ fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
         });
     }
 
+    let output_type = spawn_data.output_type;
+
     info!("Spawn message: (CWD={}) {} {}", cwd, exec, &args.join(" "));
     let mut child = Command::new(exec.as_str());
     child.stdin(Stdio::piped());
@@ -403,7 +413,75 @@ fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
             }
 
             if output.status.success() {
-                future_ok(runtime.proj.make_markdown_response_with_text(ret_msg))
+                match output_type {
+                    command::WXWorkCommandSpawnOutputType::Markdown => {
+                        future_ok(runtime.proj.make_markdown_response_with_text(ret_msg))
+                    }
+                    command::WXWorkCommandSpawnOutputType::Text => {
+                        let mut mentioned_list: Vec<String> = Vec::new();
+
+                        for caps in PICK_AT_RULE.captures_iter(ret_msg.as_str()) {
+                            if let Some(m) = caps.name("AT") {
+                                mentioned_list.push(String::from(m.as_str()));
+                            }
+                        }
+
+                        let rsp = message::WXWorkMessageTextRsp {
+                            content: ret_msg,
+                            mentioned_list: mentioned_list,
+                            mentioned_mobile_list: Vec::new(),
+                        };
+
+                        future_ok(runtime.proj.make_text_response(rsp))
+                    }
+                    command::WXWorkCommandSpawnOutputType::Image => {
+                        let file_path = ret_msg.trim();
+                        let mut options = OpenOptions::new();
+                        options
+                            .write(false)
+                            .create(false)
+                            .truncate(false)
+                            .read(true);
+                        let mut err_msg = String::default();
+                        let mut image_data: Vec<u8> = Vec::new();
+
+                        if file_path.len() > 0 {
+                            match options.open(file_path) {
+                                Ok(f) => {
+                                    let mut reader = BufReader::new(f);
+                                    match reader.read_to_end(&mut image_data) {
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            err_msg = format!(
+                                                "Try read data from {} failed, {:?}",
+                                                file_path, e
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    err_msg = format!("Try to open {} failed, {:?}", file_path, e);
+                                }
+                            };
+                        }
+
+                        if image_data.len() > 0 {
+                            future_ok(runtime.proj.make_image_response(
+                                message::WXWorkMessageImageRsp {
+                                    content: image_data,
+                                },
+                            ))
+                        } else {
+                            future_ok(runtime.proj.make_text_response(
+                                message::WXWorkMessageTextRsp {
+                                    content: err_msg,
+                                    mentioned_list: vec![runtime.msg.from.alias.clone()],
+                                    mentioned_mobile_list: Vec::new(),
+                                },
+                            ))
+                        }
+                    }
+                }
             } else {
                 future_ok(
                     runtime

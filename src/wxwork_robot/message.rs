@@ -1,5 +1,8 @@
+use base64;
 use bytes::buf::IntoBuf;
 use bytes::Bytes;
+use openssl::hash;
+
 // use hex;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Reader;
@@ -43,6 +46,11 @@ pub struct WXWorkMessageTextRsp {
 #[derive(Debug, Clone)]
 pub struct WXWorkMessageMarkdownRsp {
     pub content: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct WXWorkMessageImageRsp {
+    pub content: Vec<u8>,
 }
 
 lazy_static! {
@@ -364,6 +372,51 @@ pub fn pack_markdown_message(msg: WXWorkMessageMarkdownRsp) -> Result<String, St
             }
 
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Markdown")));
+        }
+        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
+    }
+
+    match String::from_utf8(writer.into_inner().into_inner()) {
+        Ok(ret) => Ok(ret),
+        Err(e) => Err(format!("{:?}", e)),
+    }
+}
+
+pub fn pack_image_message(msg: WXWorkMessageImageRsp) -> Result<String, String> {
+    debug!("{:?}", msg);
+    let mut writer = Writer::new(Cursor::new(Vec::new()));
+
+    if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
+        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgType"))) {
+            let _ = writer.write_event(Event::CData(BytesText::from_plain_str("image")));
+            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
+        }
+
+        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Image"))) {
+            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Base64"))) {
+                // BytesText::from_escaped_str
+                let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
+                    base64::encode(&msg.content),
+                )));
+                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Base64")));
+            }
+
+            match hash::hash(hash::MessageDigest::md5(), &msg.content) {
+                Ok(x) => {
+                    if let Ok(_) =
+                        writer.write_event(Event::Start(BytesStart::borrowed_name(b"Md5")))
+                    {
+                        // BytesText::from_escaped_str
+                        let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
+                            hex::encode(x.as_ref()).as_str(),
+                        )));
+                        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Md5")));
+                    }
+                }
+                Err(e) => error!("Md5 for {} failed, {:?}", hex::encode(&msg.content), e),
+            }
+
+            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Image")));
         }
         let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
     }

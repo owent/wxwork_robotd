@@ -27,7 +27,8 @@
             "env": {
                 "TEST_ENV": "all env key will be WXWORK_ROBOT_CMD_{NAME IN ENV} or WXWORK_ROBOT_PROJECT_{NAME}"
             },
-            "description": "执行命令**可执行文件路径** ***参数***"
+            "description": "执行命令**可执行文件路径** ***参数***",
+            "output_type": "markdown"
         }
     },
     "projects": [{

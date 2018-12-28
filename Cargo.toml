@@ -1,6 +1,6 @@
 [package]
 name = "wxwork_robotd"
-version = "0.3.6"
+version = "0.3.7"
 authors = ["owent <admin@owent.net>"]
 
 [dependencies]
@@ -82,3 +82,6 @@ linker = "musl-gcc"
 
 [features]
 system-alloc = []
+
+[target.mips64el-unknown-linux-gnuabi64]
+rustflags = ["--sysroot", "/home/owentou/prebuilt/buildroot/buildroot-2018.02.9/output/host"]
