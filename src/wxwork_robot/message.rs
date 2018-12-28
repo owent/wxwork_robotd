@@ -34,6 +34,7 @@ pub struct WXWorkMessageNtf {
     pub msg_type: String,
     pub content: String,
     pub msg_id: String,
+    pub chat_id: String,
     pub get_chat_info_url: String,
 }
 
@@ -112,6 +113,7 @@ enum WXWorkMsgField {
     Content,
     MsgId,
     GetChatInfoUrl,
+    ChatId,
 }
 
 pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
@@ -122,6 +124,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
     let mut msg_type = String::default();
     let mut content = String::default();
     let mut msg_id = String::default();
+    let mut chat_id = String::default();
     let mut get_chat_info_url = String::default();
     let mut is_in_from = false;
     let mut field_mode = WXWorkMsgField::NONE;
@@ -175,7 +178,20 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     field_mode = WXWorkMsgField::GetChatInfoUrl;
                     debug!("Parse get ready for GetChatInfoUrl");
                 }
-                _ => (),
+                b"ChatId" => {
+                    field_mode = WXWorkMsgField::ChatId;
+                    debug!("Parse get ready for ChatId");
+                }
+                any => {
+                    debug!(
+                        "Ignore start label for {}",
+                        if let Ok(x) = String::from_utf8(any.to_vec()) {
+                            x
+                        } else {
+                            String::from("UNKNOWN")
+                        }
+                    );
+                }
             },
             Ok(Event::End(ref e)) => match e.name() {
                 b"WebhookUrl" => {
@@ -236,7 +252,22 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         debug!("Parse close for GetChatInfoUrl");
                     }
                 }
-                _ => (),
+                b"ChatId" => {
+                    if let WXWorkMsgField::ChatId = field_mode {
+                        field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for ChatId");
+                    }
+                }
+                any => {
+                    debug!(
+                        "Ignore close label for {}",
+                        if let Ok(x) = String::from_utf8(any.to_vec()) {
+                            x
+                        } else {
+                            String::from("UNKNOWN")
+                        }
+                    );
+                }
             },
             Ok(Event::CData(data)) | Ok(Event::Text(data)) => {
                 if let WXWorkMsgField::NONE = field_mode {
@@ -264,7 +295,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                 match field_mode {
                     WXWorkMsgField::WebHookUrl => {
                         web_hook_url = data_str;
-                        debug!("Parse data for WebHookUrl");
+                        debug!("Parse data for WebhookUrl");
                     }
                     WXWorkMsgField::FromUserId => {
                         from_user_id = data_str;
@@ -280,26 +311,32 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     }
                     WXWorkMsgField::MsgType => {
                         msg_type = data_str;
-                        debug!("Parse data for From.MsgType");
+                        debug!("Parse data for MsgType");
                     }
                     WXWorkMsgField::Content => {
                         content = data_str;
-                        debug!("Parse data for From.Content");
+                        debug!("Parse data for Content");
                     }
                     WXWorkMsgField::MsgId => {
                         msg_id = data_str;
-                        debug!("Parse data for From.MsgId");
+                        debug!("Parse data for MsgId");
                     }
                     WXWorkMsgField::GetChatInfoUrl => {
                         get_chat_info_url = data_str;
-                        debug!("Parse data for From.GetChatInfoUrl");
+                        debug!("Parse data for GetChatInfoUrl");
                     }
-                    _ => {}
+                    WXWorkMsgField::ChatId => {
+                        chat_id = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    _ => {
+                        debug!("Ignore data {}", data_str);
+                    }
                 }
             }
             Err(e) => error!("Error at position {}: {:?}", reader.buffer_position(), e),
             Ok(Event::Eof) => break,
-            _ => (),
+            _ => {}
         }
         buf.clear();
     }
@@ -329,6 +366,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         msg_type: msg_type,
         content: content,
         msg_id: msg_id,
+        chat_id: chat_id,
         get_chat_info_url: get_chat_info_url,
     })
 }
