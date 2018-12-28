@@ -276,6 +276,8 @@ fn dispatch_robot_message<S: 'static>(
                 serde_json::Value::String(msg_ntf.from.alias.clone());
             cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_ID"] =
                 serde_json::Value::String(msg_ntf.msg_id.clone());
+            cmd_match_res.mut_json()["WXWORK_ROBOT_GET_CHAT_INFO_URL"] =
+                serde_json::Value::String(msg_ntf.get_chat_info_url.clone());
 
             // 填充模板参数json
             let template_vars = proj_obj.generate_template_vars(&cmd_match_res);

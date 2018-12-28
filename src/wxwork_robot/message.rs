@@ -34,6 +34,7 @@ pub struct WXWorkMessageNtf {
     pub msg_type: String,
     pub content: String,
     pub msg_id: String,
+    pub get_chat_info_url: String,
 }
 
 #[derive(Debug, Clone)]
@@ -110,6 +111,7 @@ enum WXWorkMsgField {
     MsgType,
     Content,
     MsgId,
+    GetChatInfoUrl,
 }
 
 pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
@@ -120,6 +122,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
     let mut msg_type = String::default();
     let mut content = String::default();
     let mut msg_id = String::default();
+    let mut get_chat_info_url = String::default();
     let mut is_in_from = false;
     let mut field_mode = WXWorkMsgField::NONE;
 
@@ -132,33 +135,45 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
             Ok(Event::Start(ref e)) => match e.name() {
                 b"WebhookUrl" => {
                     field_mode = WXWorkMsgField::WebHookUrl;
+                    debug!("Parse get ready for WebhookUrl");
                 }
                 b"From" => {
                     is_in_from = true;
+                    debug!("Parse get ready for From");
                 }
                 b"UserId" => {
                     if is_in_from {
                         field_mode = WXWorkMsgField::FromUserId;
+                        debug!("Parse get ready for From.UserId");
                     }
                 }
                 b"Name" => {
                     if is_in_from {
                         field_mode = WXWorkMsgField::FromName;
+                        debug!("Parse get ready for From.Name");
                     }
                 }
                 b"Alias" => {
                     if is_in_from {
                         field_mode = WXWorkMsgField::FromAlias;
+                        debug!("Parse get ready for From.Alias");
                     }
                 }
                 b"MsgType" => {
                     field_mode = WXWorkMsgField::MsgType;
+                    debug!("Parse get ready for MsgType");
                 }
                 b"Text" | b"Markdown" => {
                     field_mode = WXWorkMsgField::Content;
+                    debug!("Parse get ready for Content");
                 }
                 b"MsgId" => {
                     field_mode = WXWorkMsgField::MsgId;
+                    debug!("Parse get ready for MsgId");
+                }
+                b"GetChatInfoUrl" => {
+                    field_mode = WXWorkMsgField::GetChatInfoUrl;
+                    debug!("Parse get ready for GetChatInfoUrl");
                 }
                 _ => (),
             },
@@ -166,15 +181,18 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                 b"WebhookUrl" => {
                     if let WXWorkMsgField::WebHookUrl = field_mode {
                         field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for WebhookUrl");
                     }
                 }
                 b"From" => {
                     is_in_from = false;
+                    debug!("Parse close for From");
                 }
                 b"UserId" => {
                     if is_in_from {
                         if let WXWorkMsgField::FromUserId = field_mode {
                             field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for From.UserId");
                         }
                     }
                 }
@@ -182,6 +200,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     if is_in_from {
                         if let WXWorkMsgField::FromName = field_mode {
                             field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for From.Name");
                         }
                     }
                 }
@@ -189,22 +208,32 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     if is_in_from {
                         if let WXWorkMsgField::FromAlias = field_mode {
                             field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for From.Alias");
                         }
                     }
                 }
                 b"MsgType" => {
                     if let WXWorkMsgField::MsgType = field_mode {
                         field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for MsgType");
                     }
                 }
                 b"Text" | b"Markdown" => {
                     if let WXWorkMsgField::Content = field_mode {
                         field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for Content");
                     }
                 }
                 b"MsgId" => {
                     if let WXWorkMsgField::MsgId = field_mode {
                         field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for MsgId");
+                    }
+                }
+                b"GetChatInfoUrl" => {
+                    if let WXWorkMsgField::GetChatInfoUrl = field_mode {
+                        field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for GetChatInfoUrl");
                     }
                 }
                 _ => (),
@@ -235,24 +264,35 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                 match field_mode {
                     WXWorkMsgField::WebHookUrl => {
                         web_hook_url = data_str;
+                        debug!("Parse data for WebHookUrl");
                     }
                     WXWorkMsgField::FromUserId => {
                         from_user_id = data_str;
+                        debug!("Parse data for From.UserId");
                     }
                     WXWorkMsgField::FromName => {
                         from_name = data_str;
+                        debug!("Parse data for From.Name");
                     }
                     WXWorkMsgField::FromAlias => {
                         from_alias = data_str;
+                        debug!("Parse data for From.Alias");
                     }
                     WXWorkMsgField::MsgType => {
                         msg_type = data_str;
+                        debug!("Parse data for From.MsgType");
                     }
                     WXWorkMsgField::Content => {
                         content = data_str;
+                        debug!("Parse data for From.Content");
                     }
                     WXWorkMsgField::MsgId => {
                         msg_id = data_str;
+                        debug!("Parse data for From.MsgId");
+                    }
+                    WXWorkMsgField::GetChatInfoUrl => {
+                        get_chat_info_url = data_str;
+                        debug!("Parse data for From.GetChatInfoUrl");
                     }
                     _ => {}
                 }
@@ -289,6 +329,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         msg_type: msg_type,
         content: content,
         msg_id: msg_id,
+        get_chat_info_url: get_chat_info_url,
     })
 }
 

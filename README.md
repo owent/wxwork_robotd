@@ -33,6 +33,7 @@
   * WXWORK_ROBOT_MSG_FROM_NAME              : 发消息者的用户名称(版本>=0.3.6)
   * WXWORK_ROBOT_MSG_FROM_ALIAS             : 发消息者的用户别名(版本>=0.3.6)
   * WXWORK_ROBOT_MSG_ID                     : 消息ID(版本>=0.3.6)
+  * WXWORK_ROBOT_GET_CHAT_INFO_URL          : 可以用于获取消息信息的URL(版本>=0.3.8)
   * WXWORK_ROBOT_HTTP_RESPONSE              : HTTP回包(仅 ```type``` 为 http 时的echo字段可用)
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "wxwork_robotd"
-version = "0.3.7"
+version = "0.3.8"
 authors = ["owent <admin@owent.net>"]
 
 [dependencies]
