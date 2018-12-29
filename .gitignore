@@ -5,6 +5,8 @@
 **/*.rs.bk
 *.log.*
 *.dll
+*.pyc
+__pycache__
 
 wxwork_robotd.pid
 /wxwork_robotd-*

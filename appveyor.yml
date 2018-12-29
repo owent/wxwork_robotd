@@ -51,33 +51,25 @@ build_script:
 - ps: >-
     & cargo build --target $Env:TARGET --release
 
-
     Copy-Item -Force -Recurse etc "./target/$Env:TARGET/release/"
 
+    Copy-Item -Force -Recurse tools "./target/$Env:TARGET/release/"
 
     cd "./target/$Env:TARGET/release/"
 
-
     mkdir bin
-
 
     Copy-Item -Force wxwork_robotd.exe bin/
 
-
     if ( Test-Path "$Env:TARGET.zip" ) { Remove-Item -Force "$Env:TARGET.zip" }
 
-
-    Compress-Archive -DestinationPath "$Env:TARGET.zip" -Path etc,bin
-
+    Compress-Archive -DestinationPath "$Env:TARGET.zip" -Path etc,bin,tools
 
     Get-ChildItem
 
-
-    Get-ChildItem -Recurse etc,bin
-
+    Get-ChildItem -Recurse etc,bin,tools
 
     Copy-Item -Force "$Env:TARGET.zip" ../../../
-
 
     cd ../../../
 
@@ -91,5 +83,6 @@ deploy:
     secure: pXYJRg9JiTwAA+dSOgtvNDsgRd9dRDHx9LTOT4c4kRWMSEMtOJri1BMfPNuEDxYv
   artifact: release-package
   force_update: true
+  draft: true
   on:
     APPVEYOR_REPO_TAG: true 

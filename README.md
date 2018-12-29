@@ -15,6 +15,13 @@
 
 可以通过 ```./wxwork_robotd -h``` 查看可用选项。[etc](etc) 目录里有各种系统的启动脚本模板。
 
+
+## 主动发消息接口
+
+[tools](tools) 目录包含用于主动发消息的**企业微信机器人脚本**，兼容 python 2.7-3.X 。 
+
+> python 2.7 依赖 [requests](https://pypi.org/project/requests/)库。 可通过 ```pip install requests``` 来安装。
+
 ## 环境变量命名
 
 + CMD和匹配的内容可以通过 ```{{WXWORK_ROBOT_CMD}}``` 和 ```{{WXWORK_ROBOT_CMD_<变量名或匹配名>}}``` 来获取。
@@ -33,8 +40,8 @@
   * WXWORK_ROBOT_MSG_FROM_NAME              : 发消息者的用户名称(版本>=0.3.6)
   * WXWORK_ROBOT_MSG_FROM_ALIAS             : 发消息者的用户别名(版本>=0.3.6)
   * WXWORK_ROBOT_MSG_ID                     : 消息ID(版本>=0.3.6)
-  * WXWORK_ROBOT_GET_CHAT_INFO_URL          : 可以用于获取消息信息的URL(版本>=0.3.9)
-  * WXWORK_ROBOT_CHAT_ID                    : chat id(版本>=0.3.9)
+  * WXWORK_ROBOT_GET_CHAT_INFO_URL          : 可以用于获取消息信息的URL(版本>=0.3.9)，有效期为5分钟，调用一次后失效
+  * WXWORK_ROBOT_CHAT_ID                    : chat id(版本>=0.3.9)，用于区分聊天群，如果机器人被添加到多个群，可以用这个指定主动发消息到哪个群
   * WXWORK_ROBOT_HTTP_RESPONSE              : HTTP回包(仅 ```type``` 为 http 时的echo字段可用)
 
 
