@@ -10,6 +10,7 @@ env:
     - LANG="zh_CN.UTF-8"
     - USING_CROSS=0
     - USING_TRUST=0
+    - USING_SYSTEM_ALLOC=0
     - PKG_CONFIG_ALL_STATIC=1
 
 matrix:
