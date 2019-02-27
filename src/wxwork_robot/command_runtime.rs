@@ -8,7 +8,7 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 
 use tokio::util::FutureExt;
 use tokio_process::CommandExt;
@@ -33,7 +33,10 @@ pub struct WXWorkCommandRuntime {
 }
 
 lazy_static! {
-    static ref PICK_AT_RULE: Regex = Regex::new("\\@(?P<AT>[\\B]+)").unwrap();
+    static ref PICK_AT_RULE: Regex = RegexBuilder::new("\\@(?P<AT>[\\B]+)")
+        .case_insensitive(false)
+        .build()
+        .unwrap();
 }
 
 pub fn get_project_name_from_runtime(runtime: &Arc<WXWorkCommandRuntime>) -> Arc<String> {

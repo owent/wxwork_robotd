@@ -11,7 +11,7 @@ use std::io::Cursor;
 
 use actix_web::HttpResponse;
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 
 #[derive(Debug, Clone)]
 pub struct WXWorkMessageDec {
@@ -56,7 +56,10 @@ pub struct WXWorkMessageImageRsp {
 }
 
 lazy_static! {
-    static ref PICK_WEBHOOK_KEY_RULE: Regex = Regex::new("key=(?P<KEY>[\\d\\w\\-_]+)").unwrap();
+    static ref PICK_WEBHOOK_KEY_RULE: Regex = RegexBuilder::new("key=(?P<KEY>[\\d\\w\\-_]+)")
+        .case_insensitive(false)
+        .build()
+        .unwrap();
 }
 
 pub fn get_msg_encrypt_from_bytes(bytes: Bytes) -> Option<String> {

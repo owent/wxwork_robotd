@@ -64,8 +64,13 @@
         "(help)|(帮助)|(指令列表)": {
             "type": "help",                    // 帮助类型的命令
             "description": "help|帮助|指令列表", // 描述，所有的命令都有这个选项，用于help类型命令的输出，如果没有这一项，则会直接输出命令的key（匹配式）
-            "prefix": "### 可用指令列表\r\n"       // 帮助信息前缀
+            "prefix": "### 可用指令列表\r\n"     // 帮助信息前缀
             "suffix": ""                       // 帮助信息后缀
+            "case_insensitive": true,          // [所有命令] 是否忽略大小写（默认:true）
+            "multi_line": true,                // [所有命令] 是否开启逐行匹配（默认:true，When enabled, ^ matches the beginning of lines and $ matches the end of lines.）
+            "unicode": true,                   // [所有命令] 是否开启unicode支持（默认:true，When disabled, character classes such as \w only match ASCII word characters instead of all Unicode word characters）
+            "octal": true,                     // [所有命令] 是否支持octal语法（默认:false）
+            "dot_matches_new_line": false      // [所有命令] .是否匹配换行符（默认:true）
         },
         "说\\s*(?P<MSG>[^\\r\\n]+)": {
             "type": "echo",

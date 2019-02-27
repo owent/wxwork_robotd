@@ -48,7 +48,12 @@
                 "headers": {
                     "X-TEST": "value"
                 },
-                "echo": "已发起HTTP请求，回包内容\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}"
+                "echo": "已发起HTTP请求，回包内容\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}",
+                "case_insensitive": true,
+                "multi_line": true,
+                "unicode": true,
+                "octal": true,
+                "dot_matches_new_line": false
             },
             "访问\\s*(?P<URL>[^\\r\\n]+)": {
                 "type": "http",

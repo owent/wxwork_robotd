@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use serde_json;
 
 #[derive(Debug, Clone)]
@@ -104,10 +104,34 @@ pub fn read_object_from_json_object<'a>(
 
 pub fn read_bool_from_json_object<'a>(json: &'a serde_json::Value, name: &str) -> Option<bool> {
     if let Some(ref x) = json.as_object() {
-        if let Some(ref v) = x.get(name) {
-            if let Some(r) = v.as_bool() {
-                return Some(r);
-            }
+        if let Some(v) = x.get(name) {
+            return match v {
+                serde_json::Value::Null => None,
+                serde_json::Value::Bool(r) => Some(*r),
+                serde_json::Value::Number(r) => {
+                    if let Some(rv) = r.as_i64() {
+                        Some(rv != 0)
+                    } else if let Some(rv) = r.as_u64() {
+                        Some(rv != 0)
+                    } else if let Some(rv) = r.as_f64() {
+                        Some(rv != 0.0)
+                    } else {
+                        Some(false)
+                    }
+                }
+                serde_json::Value::String(r) => {
+                    let lc_name = r.to_lowercase();
+                    Some(
+                        lc_name.len() > 0
+                            && lc_name.as_str() != "false"
+                            && lc_name.as_str() != "no"
+                            && lc_name.as_str() != "disable"
+                            && lc_name.as_str() != "disabled",
+                    )
+                }
+                serde_json::Value::Array(r) => Some(r.len() > 0),
+                serde_json::Value::Object(r) => Some(r.len() > 0),
+            };
         }
     }
 
@@ -180,7 +204,42 @@ impl WXWorkCommand {
     pub fn new(cmd_name: &str, json: &serde_json::Value) -> Option<WXWorkCommand> {
         let cmd_data: WXWorkCommandData;
         let mut envs_obj = json!({});
-        let rule_obj = match Regex::new(cmd_name) {
+        // read_bool_from_json_object
+        let mut reg_builder = RegexBuilder::new(cmd_name);
+        reg_builder.case_insensitive(if let Some(v) =
+            read_bool_from_json_object(json, "case_insensitive")
+        {
+            v
+        } else {
+            true
+        });
+        reg_builder.multi_line(
+            if let Some(v) = read_bool_from_json_object(json, "multi_line") {
+                v
+            } else {
+                true
+            },
+        );
+        reg_builder.unicode(
+            if let Some(v) = read_bool_from_json_object(json, "unicode") {
+                v
+            } else {
+                true
+            },
+        );
+        reg_builder.octal(if let Some(v) = read_bool_from_json_object(json, "octal") {
+            v
+        } else {
+            false
+        });
+        reg_builder.octal(
+            if let Some(v) = read_bool_from_json_object(json, "dot_matches_new_line") {
+                v
+            } else {
+                false
+            },
+        );
+        let rule_obj = match reg_builder.build() {
             Ok(x) => x,
             Err(e) => {
                 error!("command {} regex invalid: {}\n{}", cmd_name, json, e);
