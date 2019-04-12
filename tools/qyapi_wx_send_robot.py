@@ -102,8 +102,8 @@ def SendWXRobotText(url, text, mentioned_list=[], mentioned_mobile_list=[], chat
         msg["chatid"] = chat_id
 
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
-        "Content-Type": "application/json; charset=utf-8",
-        "Expect": "100-continue"
+        "Content-Type": "application/json; charset=utf-8"#,
+        #"Expect": "100-continue"
     }))
 
 def SendWXRobotMarkdown(url, markdown, chat_id=None):
@@ -117,8 +117,8 @@ def SendWXRobotMarkdown(url, markdown, chat_id=None):
         msg["chatid"] = chat_id
 
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
-        "Content-Type": "application/json; charset=utf-8",
-        "Expect": "100-continue"
+        "Content-Type": "application/json; charset=utf-8"#,
+        #"Expect": "100-continue"
     }))
 
 def SendWXRobotImage(url, image_binary, chat_id=None):
@@ -135,8 +135,8 @@ def SendWXRobotImage(url, image_binary, chat_id=None):
         msg["chatid"] = chat_id
 
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
-        "Content-Type": "application/json; charset=utf-8",
-        "Expect": "100-continue"
+        "Content-Type": "application/json; charset=utf-8"#,
+        #"Expect": "100-continue"
     }))
 
 def SendWXRobotNews(url, news_list_array, chat_id=None):
@@ -172,8 +172,8 @@ def SendWXRobotNews(url, news_list_array, chat_id=None):
         msg["chatid"] = chat_id
     
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
-        "Content-Type": "application/json; charset=utf-8",
-        "Expect": "100-continue"
+        "Content-Type": "application/json; charset=utf-8"#,
+        #"Expect": "100-continue"
     }))
 
 if __name__ == '__main__':
