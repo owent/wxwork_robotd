@@ -205,7 +205,7 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
             http_request.timeout(Duration::from_millis(app::app_conf().task_timeout));
             http_request.header(
                 http::header::USER_AGENT,
-                format!("WXWork-Robotd {}", crate_version!()),
+                format!("Mozilla/5.0 (WXWork-Robotd {})", crate_version!()),
             );
             if http_data.content_type.len() > 0 {
                 http_request.header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
