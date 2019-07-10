@@ -139,6 +139,10 @@ matrix:
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-netbsd
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-freebsd
     # # Solaris
     # - os: linux
     #   dist: xenial

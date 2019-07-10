@@ -1,9 +1,9 @@
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse};
-use futures::future::result;
+use actix_web::{HttpRequest, HttpResponse};
+use futures::future::{ok as future_ok};
 
 use super::{AppEnvironment, HttpResponseFuture};
 
-pub fn dispatch_default_index<S>(app: AppEnvironment, _req: &HttpRequest<S>) -> HttpResponseFuture {
+pub fn dispatch_default_index(app: AppEnvironment, _: HttpRequest) -> HttpResponseFuture {
         let output = format!(
                 "<!DOCTYPE html>
 <html><head>
@@ -18,26 +18,26 @@ table th, table td {{ border: 1px solid black; padding: 0.5rem; }}
                 app.html_info()
         );
 
-        result(Ok(HttpResponse::Forbidden()
+        Box::new(future_ok(HttpResponse::Forbidden()
                 .content_type("text/html")
-                .body(output))).responder()
+                .body(output)))
 }
 
-// impl<'r, S> FnOnce<(&'r HttpRequest<S>,)> for AppDispatchDefault {
+// impl<'r, S> FnOnce<(&'r HttpRequest,)> for AppDispatchDefault {
 //     type Output = HttpResponseFuture;
-//     extern "rust-call" fn call_once(self, args: (&'r HttpRequest<S>,)) -> Self::Output {
+//     extern "rust-call" fn call_once(self, args: (&'r HttpRequest,)) -> Self::Output {
 //         self.handle(args.0)
 //     }
 // }
 //
-// impl<'r, S> FnMut<(&'r HttpRequest<S>,)> for AppDispatchDefault {
-//     extern "rust-call" fn call_mut(&mut self, args: (&'r HttpRequest<S>,)) -> HttpResponseFuture {
+// impl<'r, S> FnMut<(&'r HttpRequest,)> for AppDispatchDefault {
+//     extern "rust-call" fn call_mut(&mut self, args: (&'r HttpRequest,)) -> HttpResponseFuture {
 //         self.handle(args.0)
 //     }
 // }
 //
-// impl<'r, S> Fn<(&'r HttpRequest<S>,)> for AppDispatchDefault {
-//     extern "rust-call" fn call(&self, args: (&'r HttpRequest<S>,)) -> HttpResponseFuture {
+// impl<'r, S> Fn<(&'r HttpRequest,)> for AppDispatchDefault {
+//     extern "rust-call" fn call(&self, args: (&'r HttpRequest,)) -> HttpResponseFuture {
 //         self.handle(args.0)
 //     }
 // }

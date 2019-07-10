@@ -1,7 +1,8 @@
-use actix_web::{AsyncResponder, FromRequest, HttpMessage, HttpRequest, HttpResponse, Path};
-use bytes::Bytes;
+use actix_web::{FromRequest, HttpRequest, HttpResponse, web};
 use futures::future::{ok as future_ok, Either, Future};
+use futures::{Stream};
 use std::sync::Arc;
+use serde::Deserialize;
 
 use super::{AppEnvironment, HttpResponseFuture};
 use wxwork_robot::command_runtime;
@@ -9,8 +10,23 @@ use wxwork_robot::command_runtime::WXWorkCommandRuntime;
 use wxwork_robot::error;
 use wxwork_robot::message;
 
-pub fn get_robot_project_name<S>(_app: &AppEnvironment, req: &HttpRequest<S>) -> Option<String> {
-    let params = Path::<(String)>::extract(req);
+#[derive(Deserialize)]
+pub struct WXWorkRobotVerifyMessage {
+   msg_signature: String,
+   timestamp: String,
+   nonce: String,
+   echostr: String,
+}
+
+#[derive(Deserialize)]
+pub struct WXWorkRobotPostMessage {
+   msg_signature: String,
+   timestamp: String,
+   nonce: String,
+}
+
+pub fn get_robot_project_name(_app: &AppEnvironment, req: &HttpRequest) -> Option<String> {
+    let params = web::Path::<(String)>::extract(req);
     let project = if let Ok(project_name) = params {
         Some(project_name.into_inner())
     } else {
@@ -27,59 +43,36 @@ enum WXWorkDispatchProcess {
 }
 
 fn make_robot_error_response_future(msg: &str) -> HttpResponseFuture {
-    future_ok(message::make_robot_error_response_content(msg)).responder()
+    Box::new(future_ok(message::make_robot_error_response_content(msg)))
 }
 
-pub fn dispatch_robot_request<S: 'static>(
+pub fn dispatch_robot_request(
     app: AppEnvironment,
-    req: &HttpRequest<S>,
+    req: HttpRequest,
 ) -> HttpResponseFuture {
-    let is_verify_mode;
-    {
-        is_verify_mode = if let Some(_) = req.query().get("echostr") {
-            true
-        } else {
-            false
-        };
-    }
-
-    if is_verify_mode {
-        dispatch_robot_verify(app, &req)
-    } else {
-        dispatch_robot_message(app, &req)
-    }
-}
-
-fn dispatch_robot_verify<S>(app: AppEnvironment, req: &HttpRequest<S>) -> HttpResponseFuture {
-    // GET http://api.3dept.com/?msg_signature=ASDFQWEXZCVAQFASDFASDFSS&timestamp=13500001234&nonce=123412323&echostr=ENCRYPT_STR
     let project_name = if let Some(x) = get_robot_project_name(&app, &req) {
         x
     } else {
         return make_robot_error_response_future("project not found");
     };
 
-    let query_params = req.query();
-    let msg_signature = if let Some(v) = query_params.get("msg_signature") {
-        v.clone()
-    } else {
-        return make_robot_error_response_future("msg_signature is required");
-    };
-    let timestamp = if let Some(v) = query_params.get("timestamp") {
-        v.clone()
-    } else {
-        return make_robot_error_response_future("timestamp is required");
-    };
-    let nonce = if let Some(v) = query_params.get("nonce") {
-        v.clone()
-    } else {
-        return make_robot_error_response_future("nonce is required");
-    };
-    let echostr = if let Some(v) = query_params.get("echostr") {
-        v.clone()
-    } else {
-        return make_robot_error_response_future("echostr is required");
-    };
+    if let Ok(x) = web::Query::<WXWorkRobotVerifyMessage>::from_query(req.query_string()) {
+        let xv = x.into_inner();
+        if !xv.echostr.is_empty() {
+            return dispatch_robot_verify(app, project_name, xv);
+        }
+    } 
+    
+    
+    if let Ok(x) = web::Query::<WXWorkRobotPostMessage>::from_query(req.query_string()) {
+        return dispatch_robot_message(app, Arc::new(project_name), x.into_inner(), &req);
+    } 
+    
+    make_robot_error_response_future("parameter error.")
+}
 
+fn dispatch_robot_verify(app: AppEnvironment, project_name: String, req_msg: WXWorkRobotVerifyMessage) -> HttpResponseFuture {
+    // GET http://api.3dept.com/?msg_signature=ASDFQWEXZCVAQFASDFASDFSS&timestamp=13500001234&nonce=123412323&echostr=ENCRYPT_STR
     let proj_obj = if let Some(v) = app.get_project(project_name.as_str()) {
         v
     } else {
@@ -88,11 +81,21 @@ fn dispatch_robot_verify<S>(app: AppEnvironment, req: &HttpRequest<S>) -> HttpRe
         );
     };
 
+    if req_msg.msg_signature.is_empty() {
+        return make_robot_error_response_future("msg_signature is required");
+    };
+    if req_msg.timestamp.is_empty() {
+        return make_robot_error_response_future("timestamp is required");
+    };
+    if req_msg.nonce.is_empty() {
+        return make_robot_error_response_future("nonce is required");
+    };
+
     if !proj_obj.check_msg_signature(
-        msg_signature.as_str(),
-        timestamp.as_str(),
-        nonce.as_str(),
-        echostr.as_str(),
+        req_msg.msg_signature.as_str(),
+        req_msg.timestamp.as_str(),
+        req_msg.nonce.as_str(),
+        req_msg.echostr.as_str(),
     ) {
         return make_robot_error_response_future(
             format!("project \"{}\" check msg_signature failed", project_name).as_str(),
@@ -104,65 +107,72 @@ fn dispatch_robot_verify<S>(app: AppEnvironment, req: &HttpRequest<S>) -> HttpRe
         project_name
     );
 
-    let output = if let Ok(x) = proj_obj.decrypt_msg_raw_base64_content(echostr.as_str()) {
+    let output = if let Ok(x) = proj_obj.decrypt_msg_raw_base64_content(req_msg.echostr.as_str()) {
         x
     } else {
         let err_msg = format!(
             "project \"{}\" try to decode \"{}\" failed",
-            project_name, echostr
+            project_name, req_msg.echostr
         );
         debug!("{}", err_msg);
         return make_robot_error_response_future(err_msg.as_str());
     };
 
-    future_ok(
+    Box::new(future_ok(
         HttpResponse::Ok()
             .content_type("text/html; charset=utf-8")
             .body(output.content),
-    ).responder()
+    ))
 }
 
-fn dispatch_robot_message<S: 'static>(
+fn dispatch_robot_message(
     app: AppEnvironment,
-    req: &HttpRequest<S>,
+    project_name: Arc<String>,
+    req_msg: WXWorkRobotPostMessage,
+    req: &HttpRequest,
 ) -> HttpResponseFuture {
-    let project_name = if let Some(x) = get_robot_project_name(&app, &req) {
-        Arc::new(x)
-    } else {
-        return make_robot_error_response_future("project not found");
-    };
-
     // POST http://api.3dept.com/?msg_signature=ASDFQWEXZCVAQFASDFASDFSS&timestamp=13500001234&nonce=123412323
-    let query_params = req.query();
-    let msg_signature = if let Some(v) = query_params.get("msg_signature") {
-        v.clone()
-    } else {
+    if req_msg.msg_signature.is_empty() {
         return make_robot_error_response_future("msg_signature is required");
     };
-    let timestamp = if let Some(v) = query_params.get("timestamp") {
-        v.clone()
-    } else {
+    if req_msg.timestamp.is_empty() {
         return make_robot_error_response_future("timestamp is required");
     };
-    let nonce = if let Some(v) = query_params.get("nonce") {
-        v.clone()
-    } else {
+    if req_msg.nonce.is_empty() {
         return make_robot_error_response_future("nonce is required");
     };
 
     let project_name_for_err = project_name.clone();
     let project_name_for_run_fut = project_name.clone();
 
-    req.body()
-        .limit(256 * 1024)
-        .map_err(move |e| {
+    let req_body = match web::Payload::extract(req) {
+        Ok(x) => x,
+        Err(e) => {
+            let err_msg = format!(
+                "project \"{}\" request extract error, {:?}",
+                project_name_for_err, e
+            );
+            error!("{}", err_msg);
+            return make_robot_error_response_future(err_msg.as_str());
+        }
+    };
+
+    Box::new(
+        // .limit(256 * 1024)
+        req_body.map_err(move |e| {
             let err_msg = format!(
                 "project \"{}\" request error, {:?}",
                 project_name_for_err, e
             );
             error!("{}", err_msg);
             error::Error::StringErr(err_msg)
-        }).and_then(move |bytes: Bytes| {
+        })
+        .fold(web::BytesMut::new(), move |mut body, chunk| {
+            body.extend_from_slice(&chunk);
+            Ok::<web::BytesMut, error::Error>(body)
+        })
+        .and_then(move |bytes_mut: web::BytesMut| {
+            let bytes = web::Bytes::from(bytes_mut);
             let proj_obj = if let Some(v) = app.get_project(project_name_for_run_fut.as_str()) {
                 v
             } else {
@@ -187,9 +197,9 @@ fn dispatch_robot_message<S: 'static>(
             };
 
             if !proj_obj.check_msg_signature(
-                msg_signature.as_str(),
-                timestamp.as_str(),
-                nonce.as_str(),
+                req_msg.msg_signature.as_str(),
+                req_msg.timestamp.as_str(),
+                req_msg.nonce.as_str(),
                 encrypt_msg_b64.as_str(),
             ) {
                 return Ok(WXWorkDispatchProcess::ErrorResponse(
@@ -309,11 +319,11 @@ fn dispatch_robot_message<S: 'static>(
                 let err_msg = format!("project \"{}\" run command error, {:?}", project_name, e);
                 error!("{}", err_msg);
 
-                if let Some(mut v) = app.get_project(project_name.as_str()) {
+                if let Some(v) = app.get_project(project_name.as_str()) {
                     future_ok(v.make_error_response(err_msg))
                 } else {
                     future_ok(message::make_robot_error_response(err_msg))
                 }
             }
-        }).responder()
+        }))
 }

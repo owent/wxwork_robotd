@@ -3,6 +3,11 @@
     "taskTimeout": 4000,
     "workers": 8,
     "backlog": 256,
+    "keep_alive": 5,
+    "client_timeout": 5000,
+    "client_shutdown": 5000,
+    "max_connection_per_worker": 20480,
+    "max_concurrent_rate_per_worker": 256,
     "cmds": {
         "default": {
             "type": "echo",

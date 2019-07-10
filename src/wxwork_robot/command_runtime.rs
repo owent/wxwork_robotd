@@ -1,19 +1,18 @@
-use actix_web::{AsyncResponder, HttpResponse};
+use actix_web::{HttpResponse};
 use futures::future::{ok as future_ok, Either, Future};
-use futures::Stream;
 
 use std::fs::OpenOptions;
 use std::io::{BufReader, Read};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use regex::{Regex, RegexBuilder};
 
 use tokio::util::FutureExt;
 use tokio_process::CommandExt;
 
-use actix_web::{client, http, HttpMessage};
+use actix_web::{client, http};
 
 use handlebars::Handlebars;
 use serde_json;
@@ -74,11 +73,11 @@ pub fn run(
 
 #[allow(unused)]
 fn run_test(_: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
-    future_ok(
+    Box::new(future_ok(
         HttpResponse::Ok()
             .content_type("text/html; charset=utf-8")
             .body("test success"),
-    ).responder()
+    ))
 }
 
 fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
@@ -123,7 +122,7 @@ fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
     }
 
     debug!("Help message: \n{}", output);
-    future_ok(runtime.proj.make_markdown_response_with_text(output)).responder()
+    Box::new(future_ok(runtime.proj.make_markdown_response_with_text(output)))
 }
 
 fn run_echo(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
@@ -140,7 +139,7 @@ fn run_echo(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
     };
 
     debug!("Echo message: \n{}", echo_output);
-    future_ok(runtime.proj.make_markdown_response_with_text(echo_output)).responder()
+    Box::new(future_ok(runtime.proj.make_markdown_response_with_text(echo_output)))
 }
 
 fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
@@ -153,11 +152,11 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
         let http_data = if let command::WXWorkCommandData::HTTP(ref x) = runtime.cmd.data {
             x.clone()
         } else {
-            return future_ok(
+            return Box::new(future_ok(
                 runtime
                     .proj
                     .make_error_response(String::from("Configure type error")),
-            ).responder();
+            ));
         };
 
         if 0 == http_data.url.len() {
@@ -168,7 +167,7 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                 runtime.cmd.name(),
                 err_msg
             );
-            return future_ok(runtime.proj.make_error_response(err_msg)).responder();
+            return Box::new(future_ok(runtime.proj.make_error_response(err_msg)));
         }
 
         reg = Handlebars::new();
@@ -191,63 +190,54 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
             let mut http_request = match http_data.method {
                 command::WXWorkCommandHttpMethod::Auto => {
                     if post_data.len() > 0 {
-                        client::post(http_url.as_str())
+                        client::Client::default().post(http_url.as_str())
                     } else {
-                        client::get(http_url.as_str())
+                        client::Client::default().get(http_url.as_str())
                     }
                 }
-                command::WXWorkCommandHttpMethod::Get => client::get(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Post => client::post(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Delete => client::delete(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Put => client::put(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Head => client::head(http_url.as_str()),
+                command::WXWorkCommandHttpMethod::Get => client::Client::default().get(http_url.as_str()),
+                command::WXWorkCommandHttpMethod::Post => client::Client::default().post(http_url.as_str()),
+                command::WXWorkCommandHttpMethod::Delete => client::Client::default().delete(http_url.as_str()),
+                command::WXWorkCommandHttpMethod::Put => client::Client::default().put(http_url.as_str()),
+                command::WXWorkCommandHttpMethod::Head => client::Client::default().head(http_url.as_str()),
             };
-            http_request.timeout(Duration::from_millis(app::app_conf().task_timeout));
-            http_request.header(
-                http::header::USER_AGENT,
-                format!("Mozilla/5.0 (WXWork-Robotd {})", crate_version!()),
-            );
+            http_request = http_request
+                .timeout(Duration::from_millis(app::app_conf().task_timeout))
+                .header(
+                    http::header::USER_AGENT,
+                    format!("Mozilla/5.0 (WXWork-Robotd {})", crate_version!()),
+                );
             if http_data.content_type.len() > 0 {
-                http_request.header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
+                http_request = http_request.header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
             }
             for (k, v) in &http_data.headers {
-                http_request.header(k.as_str(), v.as_str());
+                http_request = http_request.header(k.as_str(), v.as_str());
             }
 
-            http_req_f = if post_data.len() > 0 {
-                http_request.body(post_data)
-            } else {
-                http_request.finish()
-            };
+            http_req_f = http_request.send_body(post_data);
         }
 
-        if let Err(e) = http_req_f {
-            let err_msg = format!("Make request to {} failed, {:?}", http_url, e);
-            error!(
-                "project \"{}\" command \"{}\" {}",
-                runtime.proj.name(),
-                runtime.cmd.name(),
-                err_msg
-            );
-            return future_ok(runtime.proj.make_error_response(err_msg)).responder();
-        }
+        // if let Err(e) = http_req_f {
+        //     let err_msg = format!("Make request to {} failed, {:?}", http_url, e);
+        //     error!(
+        //         "project \"{}\" command \"{}\" {}",
+        //         runtime.proj.name(),
+        //         runtime.cmd.name(),
+        //         err_msg
+        //     );
+        //     return Box::new(future_ok(runtime.proj.make_error_response(err_msg)));
+        // }
     }
 
-    let http_req = http_req_f.unwrap();
-    http_req
-        .send()
+    Box::new(http_req_f
         .then(move |response| match response {
-            Ok(http_rsp) => Either::A(http_rsp.payload().into_future().then(move |rsp_body| {
+            Ok(mut http_rsp) => Either::A(http_rsp.body().then(move |rsp_body| {
                 let final_output = match rsp_body {
-                    Ok(rsp_pair) => {
-                        let data_str = if let Some(data) = rsp_pair.0 {
-                            if let Ok(x) = String::from_utf8((&data).to_vec()) {
-                                x
-                            } else {
-                                hex::encode(&data)
-                            }
+                    Ok(rsp_data) => {
+                        let data_str = if let Ok(x) = String::from_utf8((&rsp_data).to_vec()) {
+                            x
                         } else {
-                            String::default()
+                            hex::encode(&rsp_data)
                         };
                         info!(
                             "project \"{}\" command \"{}\" get response from {}: \n{:?}",
@@ -271,7 +261,7 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                         echo_output
                     }
                     Err(e) => {
-                        let err_msg = format!("{:?}", e.0);
+                        let err_msg = format!("{:?}", e);
                         error!(
                             "project \"{}\" command \"{}\" get response from {} failed: {:?}",
                             get_project_name_from_runtime(&runtime),
@@ -296,18 +286,18 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
 
                 Either::B(future_ok(runtime.proj.make_error_response(err_msg)))
             }
-        }).responder()
+        }))
 }
 
 fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
     let spawn_data = if let command::WXWorkCommandData::SPAWN(ref x) = runtime.cmd.data {
         x.clone()
     } else {
-        return future_ok(
+        return Box::new(future_ok(
             runtime
                 .proj
                 .make_error_response(String::from("Configure type error")),
-        ).responder();
+        ));
     };
 
     let reg = Handlebars::new();
@@ -374,13 +364,13 @@ fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                 runtime.cmd.name(),
                 err_msg
             );
-            return future_ok(runtime.proj.make_error_response(err_msg)).responder();
+            return Box::new(future_ok(runtime.proj.make_error_response(err_msg)));
         }
     };
 
     let runtime_for_err = runtime.clone();
     let runtime_for_deadline = runtime.clone();
-    async_job
+    Box::new(async_job
         .wait_with_output()
         .map_err(move |e| {
             let err_msg = format!("Run command failed, {:?}", e);
@@ -496,7 +486,7 @@ fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                         }),
                 )
             }
-        }).deadline(Instant::now() + Duration::from_millis(app::app_conf().task_timeout))
+        }).timeout(Duration::from_millis(app::app_conf().task_timeout))
         .then(move |timeout_res| match timeout_res {
             Ok(x) => future_ok(x),
             Err(e) => {
@@ -515,6 +505,6 @@ fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                     },
                 ))
             }
-        }).responder()
-    //future_ok(runtime.proj.make_markdown_response_with_text(echo_output)).responder()
+        }))
+    //Box::new(future_ok(runtime.proj.make_markdown_response_with_text(echo_output)))
 }

@@ -18,6 +18,7 @@ extern crate handlebars;
 extern crate hex;
 extern crate quick_xml;
 extern crate time;
+extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate openssl;
@@ -33,8 +34,9 @@ extern crate tokio_process;
 
 // import packages
 // use std::sync::Arc;
-use actix_web::{server, App};
+use actix_web::{HttpServer, App, middleware::Logger, web};
 use std::net::TcpListener;
+use std::process;
 
 mod app;
 mod handles;
@@ -66,9 +68,19 @@ fn main() {
     }
 
     let run_info = app_env.text_info();
-    let mut server = server::new(move || {
-        let app = App::new();
-        app_env.setup(app)
+    let mut server = HttpServer::new(move || {
+        let app = App::new().wrap(Logger::new(
+            "[ACCESS] %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i %{Content-Type}i\" %T",
+        ));
+        let reg_move_default = app_env.clone();
+        let reg_move_robot = app_env.clone();
+
+        app
+        // ====== register for index ======
+        .service(web::resource(format!("{}", app_env.prefix).as_str()).to_async(move |req| handles::default::dispatch_default_index(reg_move_default, req)))
+        // ====== register for project ======
+        .service(web::resource(format!("{}{{project}}/", app_env.prefix).as_str()).to_async(move |req| handles::robot::dispatch_robot_request(reg_move_robot, req)))
+        // app_env.setup(app)
     });
 
     if app_env.debug {
@@ -76,7 +88,12 @@ fn main() {
     } else {
         server = server.workers(app_env.conf.workers);
     }
-    server = server.backlog(app_env.conf.backlog);
+    server = server.backlog(app_env.conf.backlog)
+                    .maxconn(app_env.conf.max_connection_per_worker)
+                    .maxconnrate(app_env.conf.max_concurrent_rate_per_worker)
+                    .keep_alive(app_env.conf.keep_alive)
+                    .client_timeout(app_env.conf.client_timeout)
+                    .client_shutdown(app_env.conf.client_shutdown);
 
     // server = server.client_timeout(app_env.conf.task_timeout);
     let mut listened_count = 0;
@@ -96,7 +113,23 @@ fn main() {
             }
         };
 
-        server = server.listen(listener);
+        server = match server.listen(listener) {
+            Ok(x) => {
+                x
+            },
+            Err(e) => {
+                eprintln!(
+                    "Bind address {} success but listen failed and ignore this address: {}",
+                    host, e
+                );
+                error!(
+                    "Bind address {} success but listen failed and ignore this address: {}",
+                    host, e
+                );
+                process::exit(1);
+            }
+        };
+
         println!("listen on {} success", host);
         listened_count += 1;
     }
@@ -106,5 +139,13 @@ fn main() {
     }
 
     info!("{}", run_info);
-    server.run();
+    if let Err(e) = server.run() {
+        eprintln!(
+            "Start robotd service failed: {}", e
+        );
+        error!(
+            "Start robotd service failed: {}", e
+        );
+        process::exit(1);
+    }
 }

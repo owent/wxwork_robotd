@@ -19,6 +19,11 @@ pub struct AppConfigure {
     pub hosts: Option<Vec<String>>,
     pub workers: usize,
     pub backlog: i32,
+    pub keep_alive: usize,
+    pub client_timeout: u64,
+    pub client_shutdown: u64,
+    pub max_connection_per_worker: usize,
+    pub max_concurrent_rate_per_worker: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -63,6 +68,11 @@ static mut APP_ENV_INFO_STORE: AppEnvironmentInfo = AppEnvironmentInfo {
         hosts: None,
         workers: 8,
         backlog: 256,
+        keep_alive: 5,
+        client_timeout: 5000,
+        client_shutdown: 5000,
+        max_connection_per_worker: 20480,
+        max_concurrent_rate_per_worker: 256,
     },
 };
 
@@ -499,6 +509,56 @@ impl AppEnvironment {
                 if v > 0 {
                     unsafe {
                         APP_ENV_INFO_STORE.conf.backlog = v as i32;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("keep_alive") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.keep_alive = v as usize;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("client_timeout") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.client_timeout = v as u64;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("client_shutdown") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.client_shutdown = v as u64;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("max_connection_per_worker") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.max_connection_per_worker = v as usize;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("max_concurrent_rate_per_worker") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.max_concurrent_rate_per_worker = v as usize;
                     }
                 }
             }

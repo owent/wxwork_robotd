@@ -1,6 +1,6 @@
 use base64;
 use bytes::buf::IntoBuf;
-use bytes::Bytes;
+use actix_web::web;
 use openssl::hash;
 
 // use hex;
@@ -62,7 +62,7 @@ lazy_static! {
         .unwrap();
 }
 
-pub fn get_msg_encrypt_from_bytes(bytes: Bytes) -> Option<String> {
+pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
     let mut reader = Reader::from_reader(bytes.into_buf());
     reader.trim_text(true);
     let mut is_msg_field = false;
