@@ -147,5 +147,9 @@
 
 更多详情见： https://rustup.rs/ 
 
+## LICENSE
+
+[MIT](LICENSE-MIT) or [Apache License - 2.0](LICENSE)
+
 [1]: https://crates.io/crates/handlebars
 [2]: https://docs.rs/regex/

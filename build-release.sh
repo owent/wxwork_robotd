@@ -7,16 +7,22 @@ cd "$(dirname $0)";
 SCRIPT_DIR="$PWD";
 BIN_NAME="wxwork_robotd";
 
-OPENSSL_URL=https://www.openssl.org/source/openssl-1.1.1a.tar.gz;
+LIBRESSL_URL=https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-2.8.3.tar.gz
+LIBRESSL_PKG=$(basename $LIBRESSL_URL);
+LIBRESSL_CMAKE_ARGS=("-DLIBRESSL_TESTS=OFF" "-DBUILD_SHARED_LIBS=NO") ;
+
+OPENSSL_URL=https://www.openssl.org/source/openssl-1.1.1c.tar.gz;
 OPENSSL_PKG=$(basename $OPENSSL_URL);
 PREPARED_CROSS=0;
 
+# sed -i.bak 's/\#error.*getprogname.*/return program_invocation_short_name;/' /data/workspace/wxwork_robotd/target/libressl-2.9.2/crypto/compat/getprogname_linux.c
+
 BUILD_TARGETS=(
     "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=x86_64-unknown-linux-musl"
-    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=1 TARGET_ARCH=aarch64-unknown-linux-musl"
-    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=1 TARGET_ARCH=armv7-unknown-linux-musleabihf"
-    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=i686-unknown-linux-musl"
-#    "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=mips-unknown-linux-musl"
+    # "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=1 TARGET_ARCH=aarch64-unknown-linux-musl"
+    # "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=1 TARGET_ARCH=armv7-unknown-linux-musleabihf"
+    # "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=i686-unknown-linux-musl"
+    # "USING_MUSL_TOOLCHAIN=0 ENABLE_CROSS_COMPILE=1 USING_SYSTEM_ALLOC=0 TARGET_ARCH=mips-unknown-linux-musl"
 );
 
 # BUILD_TARGETS=(
@@ -32,13 +38,13 @@ BUILD_TARGETS=(
 
 function get_openssl_pkg() {
     if [ ! -e "$SCRIPT_DIR/target/openssl/$OPENSSL_PKG" ]; then
-        wget --no-check-certificate $OPENSSL_URL -O "$SCRIPT_DIR/target/openssl/$OPENSSL_PKG";
+        wget -c --no-check-certificate $OPENSSL_URL -O "$SCRIPT_DIR/target/openssl/$OPENSSL_PKG";
     fi
 }
 
 function build_musl_openssl() {
-    CROSS_COMPILE_TARGET="$1";
-    OPENSSL_PREBUILT_DIR="$SCRIPT_DIR/target/openssl/$CROSS_COMPILE_TARGET";
+    TARGET_ARCH="$1";
+    OPENSSL_PREBUILT_DIR="$SCRIPT_DIR/target/openssl/$TARGET_ARCH";
     if [ ! -e "$OPENSSL_PREBUILT_DIR" ]; then
         mkdir -p "$SCRIPT_DIR/target/openssl";
         get_openssl_pkg;
@@ -56,6 +62,32 @@ function build_musl_openssl() {
     fi
 }
 
+function get_libressl_pkg() {
+    if [ ! -e "$SCRIPT_DIR/target/libressl/$LIBRESSL_PKG" ]; then
+        wget -c --no-check-certificate $LIBRESSL_URL -O "$SCRIPT_DIR/target/libressl/$LIBRESSL_PKG";
+    fi
+}
+
+function build_musl_libressl() {
+    TARGET_ARCH="$1";
+    LIBRESSL_PREBUILT_DIR="$SCRIPT_DIR/target/libressl/$TARGET_ARCH";
+    if [ ! -e "$LIBRESSL_PREBUILT_DIR" ]; then
+        mkdir -p "$SCRIPT_DIR/target/libressl";
+        get_libressl_pkg;
+        cd "$SCRIPT_DIR/target/libressl";
+        tar -axvf $LIBRESSL_PKG;
+        cd ${LIBRESSL_PKG//.tar.*};
+        mkdir -p build_jobs_dir && cd build_jobs_dir;
+        sed -i.bak 's/\#error.*getprogname.*/return program_invocation_short_name;/' ../crypto/compat/getprogname_linux.c ;
+        env CC=musl-gcc cmake .. "-DCMAKE_INSTALL_PREFIX=$LIBRESSL_PREBUILT_DIR" ${LIBRESSL_CMAKE_ARGS[@]} -DCMAKE_C_COMPILER=musl-gcc ;
+        cmake --build . -- install -j8;
+
+        if [ 0 -ne $? ]; then
+            echo -e "\033[1;31mWe require cross-gcc-dev, musl, musl-dev, musl-tools to do this.\033[0m";
+        fi
+    fi
+}
+
 function build_for_arch() {
     for ENV_VAR in $@; do
         echo "export $ENV_VAR;";
@@ -66,7 +98,7 @@ function build_for_arch() {
     fi
 
     CROSS_COMPILE_DIR="$TARGET_ARCH";
-    CROSS_COMPILE_TARGET="--target $CROSS_COMPILE_DIR";
+    CROSS_COMPILE_TARGET="--target=$CROSS_COMPILE_DIR";
 
     if [ -z "$ENABLE_CROSS_COMPILE" ]; then
         ENABLE_CROSS_COMPILE=0;
@@ -122,8 +154,10 @@ function build_for_arch() {
         BUILD_WITH_SYSTEM_ALLOC=" --features system-alloc";
     fi
     if [ $USING_MUSL_TOOLCHAIN -ne 0 ]; then
-        build_musl_openssl $TARGET_ARCH;
-        env PKG_CONFIG_ALL_STATIC=1 OPENSSL_STATIC=1 PKG_CONFIG_ALLOW_CROSS=1 OPENSSL_DIR=$SCRIPT_DIR/target/openssl/$CROSS_COMPILE_TARGET cargo build --release $CROSS_COMPILE_TARGET $BUILD_WITH_SYSTEM_ALLOC;
+        # build_musl_openssl $TARGET_ARCH;
+        # env PKG_CONFIG_ALL_STATIC=1 OPENSSL_STATIC=1 PKG_CONFIG_ALLOW_CROSS=1 OPENSSL_DIR=$SCRIPT_DIR/target/openssl/$TARGET_ARCH cargo build --release $CROSS_COMPILE_TARGET $BUILD_WITH_SYSTEM_ALLOC;
+        build_musl_libressl $TARGET_ARCH;
+        env PKG_CONFIG_ALL_STATIC=1 OPENSSL_STATIC=1 PKG_CONFIG_ALLOW_CROSS=1 OPENSSL_DIR=$SCRIPT_DIR/target/libressl/$TARGET_ARCH cargo build --release $CROSS_COMPILE_TARGET $BUILD_WITH_SYSTEM_ALLOC ;
     elif [ $ENABLE_CROSS_COMPILE -ne 0 ]; then
         cross build $CROSS_COMPILE_TARGET --release $BUILD_WITH_SYSTEM_ALLOC ;
     else
