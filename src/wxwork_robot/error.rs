@@ -1,6 +1,7 @@
 use actix_web;
-use base64;
 use openssl;
+
+use super::base64;
 
 #[derive(Debug)]
 pub enum Error {

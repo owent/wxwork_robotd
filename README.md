@@ -55,11 +55,11 @@
     "taskTimeout": 4000,                     // 超时时间4000ms，企业微信要求在5秒内回应，这里容忍1秒钟的网络延迟
     "workers": 8,                            // 工作线程数
     "backlog": 256,                          // 建立连接的排队长度
-    "keep_alive": 5,                         // tcp保持连接的心跳间隔（秒）
-    "client_timeout": 5000,                  // 客户端第一个请求的超时时间（毫秒）
-    "client_shutdown": 5000,                 // 客户端连接的超时时间（毫秒）
-    "max_connection_per_worker": 20480,      // 每个worker的最大连接数，当连接数满之后不会再接受新连接
-    "max_concurrent_rate_per_worker": 256,   // 每个worker的最大握手连接数，当连接数满之后不会再接受新连接（一般用于控制SSL握手的开销）
+    "keep_alive": 5,                         // tcp保持连接的心跳间隔（秒） (支持版本: >=0.6.0)
+    "client_timeout": 5000,                  // 客户端第一个请求的超时时间（毫秒） (支持版本: >=0.6.0)
+    "client_shutdown": 5000,                 // 客户端连接的超时时间（毫秒） (支持版本: >=0.6.0)
+    "max_connection_per_worker": 20480,      // 每个worker的最大连接数，当连接数满之后不会再接受新连接 (支持版本: >=0.6.0)
+    "max_concurrent_rate_per_worker": 256,   // 每个worker的最大握手连接数，当连接数满之后不会再接受新连接（一般用于控制SSL握手的开销） (支持版本: >=0.6.0)
     "cmds": {                                // 这里所有的command所有的project共享
         "default": {                         // 如果找不到命令，会尝试找名称为default的命令执行，这时候
             "type": "echo",                  // 直接输出类型的命令

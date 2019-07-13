@@ -1,3 +1,4 @@
+pub mod base64;
 pub mod command;
 pub mod command_runtime;
 pub mod error;

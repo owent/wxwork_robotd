@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use super::{command, message};
+use super::{command, message, base64};
 
 #[derive(Clone)]
 struct WXWorkProjectCipherInfo {
@@ -57,6 +57,7 @@ impl WXWorkProject {
     pub fn new(json: &serde_json::Value) -> Option<WXWorkProject> {
         if !json.is_object() {
             error!("project configure invalid: {}", json);
+            eprintln!("project configure invalid: {}", json);
             return None;
         }
         let proj_name: String;
@@ -68,6 +69,7 @@ impl WXWorkProject {
         {
             if !json.is_object() {
                 error!("project must be a json object, but real is {}", json);
+                eprintln!("project must be a json object, but real is {}", json);
                 return None;
             };
 
@@ -75,6 +77,7 @@ impl WXWorkProject {
                 x
             } else {
                 error!("project configure must has name field {}", json);
+                eprintln!("project configure must has name field {}", json);
                 return None;
             };
 
@@ -82,6 +85,10 @@ impl WXWorkProject {
                 x
             } else {
                 error!(
+                    "project \"{}\" configure must has token field {}",
+                    proj_name, json
+                );
+                eprintln!(
                     "project \"{}\" configure must has token field {}",
                     proj_name, json
                 );
@@ -93,6 +100,10 @@ impl WXWorkProject {
                     x
                 } else {
                     error!(
+                        "project \"{}\" configure must has encodingAESKey field {}",
+                        proj_name, json
+                    );
+                    eprintln!(
                         "project \"{}\" configure must has encodingAESKey field {}",
                         proj_name, json
                     );
@@ -138,10 +149,16 @@ impl WXWorkProject {
         envs_obj["WXWORK_ROBOT_PROJECT_ENCODING_AES_KEY"] =
             serde_json::Value::String(proj_aes_key.clone());
 
-        let aes_key_bin = match base64::decode((proj_aes_key.clone() + "=").as_bytes()) {
+        let aes_key_bin = match base64::STANDARD_UTF7.decode(proj_aes_key.as_bytes()) {
             Ok(x) => x,
             Err(e) => {
                 error!(
+                    "project \"{}\" configure encodingAESKey \"{}\" decode failed \"{}\"",
+                    proj_name,
+                    proj_aes_key,
+                    e.to_string()
+                );
+                eprintln!(
                     "project \"{}\" configure encodingAESKey \"{}\" decode failed \"{}\"",
                     proj_name,
                     proj_aes_key,
@@ -154,6 +171,12 @@ impl WXWorkProject {
         let cipher_openssl = Cipher::aes_256_cbc();
         if cipher_openssl.key_len() != aes_key_bin.len() {
             error!(
+                "project \"{}\" configure encodingAESKey \"{}\" decode with invalid len {}, require 32",
+                proj_name,
+                proj_aes_key,
+                aes_key_bin.len()
+            );
+            eprintln!(
                 "project \"{}\" configure encodingAESKey \"{}\" decode with invalid len {}, require 32",
                 proj_name,
                 proj_aes_key,
@@ -344,7 +367,7 @@ impl WXWorkProject {
     pub fn decrypt_msg_raw_base64(&self, input: &str) -> Result<Vec<u8>, String> {
         // POST http://api.3dept.com/?msg_signature=ASDFQWEXZCVAQFASDFASDFSS&timestamp=13500001234&nonce=123412323
         // aes_msg=Base64_Decode(msg_encrypt)
-        let bin = match base64::decode(input.as_bytes()) {
+        let bin = match base64::STANDARD.decode(input.as_bytes()) {
             Ok(x) => x,
             Err(e) => {
                 let ret = format!(
@@ -538,7 +561,19 @@ impl WXWorkProject {
     pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {
         // msg_encrypt = Base64_Encode(AES_Encrypt(rand_msg))
         match self.encrypt_msg_raw(&input) {
-            Ok(x) => Ok(base64::encode(&x)),
+            Ok(x) => match base64::STANDARD.encode(&x) {
+                Ok(v) => Ok(v),
+                Err(e) => {
+                    let ret = format!(
+                        "project \"{}\" encrypt {} and encode to base64 failed, \n{:?}",
+                        self.name(),
+                        hex::encode(input),
+                        e
+                    );
+                    debug!("{}", ret);
+                    return Err(ret);
+                }
+            },
             Err(e) => Err(e),
         }
     }

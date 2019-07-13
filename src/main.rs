@@ -12,7 +12,6 @@ extern crate actix_web;
 extern crate futures;
 #[macro_use]
 extern crate log;
-extern crate base64;
 extern crate bytes;
 extern crate handlebars;
 extern crate hex;

@@ -1,4 +1,3 @@
-use base64;
 use bytes::buf::IntoBuf;
 use actix_web::web;
 use openssl::hash;
@@ -12,6 +11,8 @@ use std::io::Cursor;
 use actix_web::HttpResponse;
 
 use regex::{Regex, RegexBuilder};
+
+use super::base64;
 
 #[derive(Debug, Clone)]
 pub struct WXWorkMessageDec {
@@ -478,7 +479,10 @@ pub fn pack_image_message(msg: WXWorkMessageImageRsp) -> Result<String, String> 
             if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Base64"))) {
                 // BytesText::from_escaped_str
                 let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
-                    base64::encode(&msg.content),
+                    match base64::STANDARD.encode(&msg.content) {
+                        Ok(x) => x,
+                        Err(e) => e.message
+                    }
                 )));
                 let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Base64")));
             }
