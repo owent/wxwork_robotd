@@ -64,6 +64,12 @@ lazy_static! {
 }
 
 pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
+    debug!("try to decode {}",
+        match String::from_utf8(bytes.to_vec()) {
+            Ok(x) => x,
+            Err(_) => hex::encode(&bytes)
+        }
+    );
     let mut reader = Reader::from_reader(bytes.into_buf());
     reader.trim_text(true);
     let mut is_msg_field = false;
