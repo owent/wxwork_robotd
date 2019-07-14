@@ -55,11 +55,12 @@
     "taskTimeout": 4000,                     // 超时时间4000ms，企业微信要求在5秒内回应，这里容忍1秒钟的网络延迟
     "workers": 8,                            // 工作线程数
     "backlog": 256,                          // 建立连接的排队长度
-    "keep_alive": 5,                         // tcp保持连接的心跳间隔（秒） (支持版本: >=0.6.0)
-    "client_timeout": 5000,                  // 客户端第一个请求的超时时间（毫秒） (支持版本: >=0.6.0)
-    "client_shutdown": 5000,                 // 客户端连接的超时时间（毫秒） (支持版本: >=0.6.0)
-    "max_connection_per_worker": 20480,      // 每个worker的最大连接数，当连接数满之后不会再接受新连接 (支持版本: >=0.6.0)
-    "max_concurrent_rate_per_worker": 256,   // 每个worker的最大握手连接数，当连接数满之后不会再接受新连接（一般用于控制SSL握手的开销） (支持版本: >=0.6.0)
+    "keep_alive": 5,                         // tcp保持连接的心跳间隔（秒） (版本: >=0.6.0)
+    "client_timeout": 5000,                  // 客户端第一个请求的超时时间（毫秒） (版本: >=0.6.0)
+    "client_shutdown": 5000,                 // 客户端连接的超时时间（毫秒） (版本: >=0.6.0)
+    "max_connection_per_worker": 20480,      // 每个worker的最大连接数，当连接数满之后不会再接受新连接 (版本: >=0.6.0)
+    "max_concurrent_rate_per_worker": 256,   // 每个worker的最大握手连接数，当连接数满之后不会再接受新连接（一般用于控制SSL握手的开销） (版本: >=0.6.0)
+    "payload_size_limit": 262144,            // 消息体最大长度，默认: 262144(256KB) (版本: >=0.6.0)
     "cmds": {                                // 这里所有的command所有的project共享
         "default": {                         // 如果找不到命令，会尝试找名称为default的命令执行，这时候
             "type": "echo",                  // 直接输出类型的命令
@@ -143,6 +144,7 @@
 4. 克隆仓库并进入主目录
 5. 如果是Windows环境，需要准备openssl开发包，并通过环境变量 ```OPENSSL_DIR``` 来指定安装包。(其他环境可略过这步)
     > 可以从 http://slproweb.com/products/Win32OpenSSL.html 下载预编译包，必须用完整版，不能用Light版本
+    > 然后设置环境变量 ```X86_64_PC_WINDOWS_MSVC_OPENSSL_DIR=C:/Program Files/OpenSSL-Win64``` (请替换成你的安装目录)
 6. 运行编译命令: ```cargo build```
 
 更多详情见： https://rustup.rs/ 

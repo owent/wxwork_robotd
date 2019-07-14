@@ -64,12 +64,6 @@ lazy_static! {
 }
 
 pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
-    debug!("try to decode {}",
-        match String::from_utf8(bytes.to_vec()) {
-            Ok(x) => x,
-            Err(_) => hex::encode(&bytes)
-        }
-    );
     let mut reader = Reader::from_reader(bytes.into_buf());
     reader.trim_text(true);
     let mut is_msg_field = false;
@@ -602,3 +596,14 @@ pub fn make_robot_error_response_content(msg: &str) -> HttpResponse {
 pub fn make_robot_error_response(msg: String) -> HttpResponse {
     make_robot_error_response_content(msg.as_str())
 }
+
+pub fn make_robot_not_found_response_content(msg: &str) -> HttpResponse {
+    HttpResponse::NotFound()
+        .content_type("application/xml")
+        .body(get_robot_response_access_deny_content(msg))
+}
+
+pub fn make_robot_not_found_response(msg: String) -> HttpResponse {
+    make_robot_not_found_response_content(msg.as_str())
+}
+

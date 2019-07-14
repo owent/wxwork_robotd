@@ -24,6 +24,7 @@ pub struct AppConfigure {
     pub client_shutdown: u64,
     pub max_connection_per_worker: usize,
     pub max_concurrent_rate_per_worker: usize,
+    pub payload_size_limit: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -73,6 +74,7 @@ static mut APP_ENV_INFO_STORE: AppEnvironmentInfo = AppEnvironmentInfo {
         client_shutdown: 5000,
         max_connection_per_worker: 20480,
         max_concurrent_rate_per_worker: 256,
+        payload_size_limit: 262144, // 256KB
     },
 };
 
@@ -94,12 +96,14 @@ pub fn app() -> AppEnvironment {
                 .short("v")
                 .long("version")
                 .help("Show version"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("debug")
                 .short("d")
                 .long("debug")
                 .help("Show debug log"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("prefix")
                 .short("P")
                 .long("prefix")
@@ -107,7 +111,8 @@ pub fn app() -> AppEnvironment {
                 .help("Set a url prefix for current service")
                 .takes_value(true)
                 .default_value("/"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("configure")
                 .short("c")
                 .long("conf")
@@ -115,27 +120,31 @@ pub fn app() -> AppEnvironment {
                 .help("Set configure file")
                 .required(true)
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("log")
                 .short("l")
                 .long("log")
                 .value_name("LOG PATH")
                 .help("Set log path")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("log-rotate")
                 .long("log-rotate")
                 .value_name("LOG ROTATE")
                 .help("Set log rotate")
                 .takes_value(true)
                 .default_value("8"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("log-rotate-size")
                 .long("log-rotate-size")
                 .value_name("LOG ROTATE SIZE")
                 .help("Set log rotate size in bytes")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("pid-file")
                 .long("pid-file")
                 .value_name("PID FILE")
@@ -328,7 +337,8 @@ impl AppEnvironment {
                             format!(
                             "{3}Wechat robot callback URL: {4}http://{0}:{1}{2}/<project name>{5}",
                             saddr.ip(), saddr.port(), prefix_str, row_begin, row_split, row_end
-                        ).as_str();
+                        )
+                            .as_str();
                         if saddr.ip().is_unspecified() {
                             row_host +=
                                 format!(
@@ -559,6 +569,16 @@ impl AppEnvironment {
                 if v > 0 {
                     unsafe {
                         APP_ENV_INFO_STORE.conf.max_concurrent_rate_per_worker = v as usize;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("payload_size_limit") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.payload_size_limit = v as usize;
                     }
                 }
             }

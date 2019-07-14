@@ -16,8 +16,8 @@ extern crate bytes;
 extern crate handlebars;
 extern crate hex;
 extern crate quick_xml;
-extern crate time;
 extern crate serde;
+extern crate time;
 #[macro_use]
 extern crate serde_json;
 extern crate openssl;
@@ -33,7 +33,7 @@ extern crate tokio_process;
 
 // import packages
 // use std::sync::Arc;
-use actix_web::{HttpServer, App, middleware::Logger, web};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use std::net::TcpListener;
 use std::process;
 
@@ -75,10 +75,22 @@ fn main() {
         let reg_move_robot = app_env.clone();
 
         app
-        // ====== register for index ======
-        .service(web::resource(format!("{}", app_env.prefix).as_str()).to_async(move |req| handles::default::dispatch_default_index(reg_move_default, req)))
-        // ====== register for project ======
-        .service(web::resource(format!("{}{{project}}/", app_env.prefix).as_str()).to_async(move |req| handles::robot::dispatch_robot_request(reg_move_robot, req)))
+            // ====== register for index ======
+            .service(
+                web::resource(format!("{}", app_env.prefix).as_str())
+                    .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
+                    .to_async(move |req| {
+                        handles::default::dispatch_default_index(reg_move_default, req)
+                    }),
+            )
+            // ====== register for project ======
+            .service(
+                web::resource(format!("{}{{project}}/", app_env.prefix).as_str())
+                    .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
+                    .to_async(move |req, body| {
+                        handles::robot::dispatch_robot_request(reg_move_robot, req, body)
+                    }),
+            )
         // app_env.setup(app)
     });
 
@@ -87,12 +99,13 @@ fn main() {
     } else {
         server = server.workers(app_env.conf.workers);
     }
-    server = server.backlog(app_env.conf.backlog)
-                    .maxconn(app_env.conf.max_connection_per_worker)
-                    .maxconnrate(app_env.conf.max_concurrent_rate_per_worker)
-                    .keep_alive(app_env.conf.keep_alive)
-                    .client_timeout(app_env.conf.client_timeout)
-                    .client_shutdown(app_env.conf.client_shutdown);
+    server = server
+        .backlog(app_env.conf.backlog)
+        .maxconn(app_env.conf.max_connection_per_worker)
+        .maxconnrate(app_env.conf.max_concurrent_rate_per_worker)
+        .keep_alive(app_env.conf.keep_alive)
+        .client_timeout(app_env.conf.client_timeout)
+        .client_shutdown(app_env.conf.client_shutdown);
 
     // server = server.client_timeout(app_env.conf.task_timeout);
     let mut listened_count = 0;
@@ -113,9 +126,7 @@ fn main() {
         };
 
         server = match server.listen(listener) {
-            Ok(x) => {
-                x
-            },
+            Ok(x) => x,
             Err(e) => {
                 eprintln!(
                     "Bind address {} success but listen failed and ignore this address: {}",
@@ -139,12 +150,8 @@ fn main() {
 
     info!("{}", run_info);
     if let Err(e) = server.run() {
-        eprintln!(
-            "Start robotd service failed: {}", e
-        );
-        error!(
-            "Start robotd service failed: {}", e
-        );
+        eprintln!("Start robotd service failed: {}", e);
+        error!("Start robotd service failed: {}", e);
         process::exit(1);
     }
 }

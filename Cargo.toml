@@ -96,3 +96,5 @@ system-alloc = []
 
 # [target.mips64el-unknown-linux-gnuabi64]
 # rustflags = ["--sysroot", "/home/owentou/prebuilt/buildroot/buildroot-2018.02.9/output/host"]
+
+[target.x86_64-pc-windows-msvc]
