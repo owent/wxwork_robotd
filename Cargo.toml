@@ -1,10 +1,11 @@
 [package]
 name = "wxwork_robotd"
 version = "0.6.0"
+description = "Robot service for WXWork"
 authors = ["owent <admin@owent.net>"]
 documentation = "https://github.com/owt5008137/wxwork_robotd"
 repository = "https://github.com/owt5008137/wxwork_robotd"
-keywords = ["wxwork", "wework", "robot", "weixin", "wechat"]
+keywords = ["wxwork", "wework", "robot", "weixin", "wechat", "微信", "企业微信", "机器人"]
 license = "MIT OR Apache-2.0"
 include = [
     "src/**/*.rs",
