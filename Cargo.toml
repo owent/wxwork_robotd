@@ -5,7 +5,8 @@ description = "Robot service for WXWork"
 authors = ["owent <admin@owent.net>"]
 documentation = "https://github.com/owt5008137/wxwork_robotd"
 repository = "https://github.com/owt5008137/wxwork_robotd"
-keywords = ["wxwork", "wework", "robot", "weixin", "wechat", "微信", "企业微信", "机器人"]
+keywords = ["wxwork", "wework", "robot", "weixin", "wechat", "service", "server", "robotd"]
+categories = ["network-programming", "web-programming::http-server", "web-programming::http-client", "development-tools"]
 license = "MIT OR Apache-2.0"
 include = [
     "src/**/*.rs",
