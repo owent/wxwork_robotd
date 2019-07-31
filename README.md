@@ -16,6 +16,29 @@
 可以通过 ```./wxwork_robotd -h``` 查看可用选项。[etc](etc) 目录里有各种系统的启动脚本模板。
 
 
+## 下载和安装
+
+您可以在 https://github.com/owt5008137/wxwork_robotd/releases 下载预发布包，解压即可。
+
+> 或者使用 rust 的cargo 命令```cargo install wxwork_robotd``` 来直接安装到 ```$HOME/.cargo/bin``` 。
+> 这种方式只会安装可执行程序，其他的示例文件和工具脚本可以在 ```$HOME/.cargo/registry/src/github.com-*/wxwork_robotd-*``` 里找到。
+
+发布包文件说明：
+
+1. [etc/conf.json](etc/conf.json) ：示例的配置文件。
+2. [etc/firewalld/wxwork_robotd.xml](etc/firewalld/wxwork_robotd.xml) ： 示例的firewalld配置文件。
+  > 请先修改端口号为和配置文件保持一致。
+  > 然后复制到 ```/etc/firewalld/services/wxwork_robotd.xml``` 后执行 ```sudo firewall-cmd --permanent --add-service=wxwork_robotd``` 即可。
+
+3. [etc/systemd/wxwork_robotd.service](etc/systemd/wxwork_robotd.service) ： 示例的systemd服务配置文件
+  > 请先修改部署目录和实际使用的路径保持一致
+  > 然后复制到 ```/usr/lib/systemd/system/wxwork_robotd.service``` 后执行 ```sudo systemctl enable wxwork_robotd && sudo systemctl start wxwork_robotd``` 即可。
+
+4. [etc/systemv/wxwork_robotd](etc/systemv/wxwork_robotd) ： 示例的用于 systemv 的服务配置文件
+5. [etc/init.d/wxwork_robotd](etc/init.d/wxwork_robotd) ： 示例的用于 init.d 的服务配置文件
+6. [tools](tools) ： 用于主动发机器人消息的工具脚本
+
+
 ## 主动发消息接口
 
 [tools](tools) 目录包含用于主动发消息的**企业微信机器人脚本**，兼容 python 2.7-3.X 。 
