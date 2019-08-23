@@ -311,6 +311,8 @@ fn dispatch_robot_message(
         serde_json::Value::String(msg_ntf.get_chat_info_url.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_CHAT_ID"] =
         serde_json::Value::String(msg_ntf.chat_id.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_CHAT_TYPE"] =
+        serde_json::Value::String(msg_ntf.chat_type.clone());
 
     // 填充模板参数json
     let template_vars = proj_obj.generate_template_vars(&cmd_match_res);
