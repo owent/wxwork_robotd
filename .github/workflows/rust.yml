@@ -8,16 +8,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        # rust: [stable, nightly]
+        rust: [stable, nightly]
     runs-on: ${{ matrix.os }}
 
     steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@v1
-    - name: Install rust
-       if: matrix.os == 'macOS-latest'
-       run: |
-         brew install -f rustup-init
-         rustup-init -f
     - name: Build
        run: cargo build --verbose
     - name: Run tests

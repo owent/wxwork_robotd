@@ -10,6 +10,11 @@
     "max_concurrent_rate_per_worker": 256,
     "payload_size_limit": 262144,
     "cmds": {
+        "": {
+            "type": "echo",
+            "echo": "空消息，本群会话ID: {{WXWORK_ROBOT_CHAT_ID}}",
+            "hidden": true
+        },
         "default": {
             "type": "echo",
             "echo": "我还不认识这个指令呐!({{WXWORK_ROBOT_CMD}})",

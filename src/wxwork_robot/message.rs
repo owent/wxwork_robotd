@@ -632,6 +632,10 @@ pub fn make_robot_not_found_response(msg: String) -> HttpResponse {
     make_robot_not_found_response_content(msg.as_str())
 }
 
+pub fn make_robot_empty_response() -> HttpResponse {
+    HttpResponse::Ok()
+}
+
 
 #[cfg(test)]
 mod tests {

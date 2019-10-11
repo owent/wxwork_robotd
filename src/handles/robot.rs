@@ -270,6 +270,12 @@ fn dispatch_robot_message(
         )));
     };
 
+    let default_cmd_name = if msg_ntf.content.trim().is_empty() {
+        ""
+    } else {
+        "default"
+    };
+    
     // 查找匹配命令
     let (cmd_ptr, mut cmd_match_res, is_default_cmd) =
         if let Some((x, y)) = proj_obj.try_commands(&msg_ntf.content) {
@@ -278,17 +284,21 @@ fn dispatch_robot_message(
         } else if let Some((x, y)) = app.get_global_command(&msg_ntf.content) {
             // global 域内查找命令
             (x, y, false)
-        } else if let Some((x, y)) = proj_obj.try_commands("default") {
+        } else if let Some((x, y)) = proj_obj.try_commands(default_cmd_name) {
             // project 域内查找默认命令
             (x, y, true)
-        } else if let Some((x, y)) = app.get_global_command("default") {
+        } else if let Some((x, y)) = app.get_global_command(default_cmd_name) {
             // global 域内查找默认命令
             (x, y, true)
         } else {
-            return Box::new(future_ok(message::make_robot_not_found_response(format!(
-                "project \"{}\" get command from {} failed",
-                project_name, msg_ntf.content
-            ))));
+            if (default_cmd_name.is_empty()) {
+                return Box::new(future_ok(message::make_robot_empty_response()));
+            } else {
+                return Box::new(future_ok(message::make_robot_not_found_response(format!(
+                    "project \"{}\" get command from {} failed",
+                    project_name, msg_ntf.content
+                ))));
+            }
         };
 
     if is_default_cmd {
