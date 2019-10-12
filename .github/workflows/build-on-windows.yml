@@ -12,7 +12,12 @@ jobs:
         os: [windows-latest]
         rust: [stable]
         target:
-          [x86_64-pc-windows-msvc, x86_64-pc-windows-gnu, i686-pc-windows-gnu]
+          [
+            x86_64-pc-windows-msvc,
+            x86_64-pc-windows-gnu,
+            i686-pc-windows-msvc,
+            i686-pc-windows-gnu,
+          ]
     runs-on: ${{ matrix.os }}
     env:
       VCPKGRS_DYNAMIC: 1
@@ -28,7 +33,7 @@ jobs:
       - name: Install OpenSSL
         shell: bash
         run: |
-          if [ "${{ matrix.target }}" == "i686-pc-windows-gnu" ]; then
+          if [ "${{ matrix.target }}" == "i686-pc-windows-msvc" ] || [ "${{ matrix.target }}" == "i686-pc-windows-gnu" ]; then
             vcpkg install openssl --triplet x86-windows
             vcpkg install openssl --triplet x86-windows-static
           else
@@ -36,8 +41,10 @@ jobs:
             vcpkg install openssl --triplet x64-windows-static
           fi
       - name: Build
+        shell: bash
         run: |
-          cargo build --release --verbose --target ${{ matrix.target }}
+          env VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT cargo build --release --verbose --target ${{ matrix.target }}
       - name: Run tests
+        shell: bash
         run: |
-          cargo test --release --verbose --target ${{ matrix.target }}
+          env VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT cargo test --release --verbose --target ${{ matrix.target }}
