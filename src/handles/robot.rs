@@ -37,7 +37,11 @@ fn make_robot_error_response_future(msg: &str) -> HttpResponseFuture {
     Box::new(future_ok(message::make_robot_error_response_content(msg)))
 }
 
-pub fn dispatch_robot_request(app: AppEnvironment, req: HttpRequest, body: web::Bytes) -> HttpResponseFuture {
+pub fn dispatch_robot_request(
+    app: AppEnvironment,
+    req: HttpRequest,
+    body: web::Bytes,
+) -> HttpResponseFuture {
     let project_name = if let Some(x) = get_robot_project_name(&app, &req) {
         x
     } else {
@@ -51,12 +55,7 @@ pub fn dispatch_robot_request(app: AppEnvironment, req: HttpRequest, body: web::
         }
     }
     if let Ok(x) = web::Query::<WXWorkRobotPostMessage>::from_query(req.query_string()) {
-        return dispatch_robot_message(
-            app,
-            Arc::new(project_name),
-            x.into_inner(),
-            body,
-        );
+        return dispatch_robot_message(app, Arc::new(project_name), x.into_inner(), body);
     }
     make_robot_error_response_future("parameter error.")
 }
@@ -275,7 +274,6 @@ fn dispatch_robot_message(
     } else {
         "default"
     };
-    
     // 查找匹配命令
     let (cmd_ptr, mut cmd_match_res, is_default_cmd) =
         if let Some((x, y)) = proj_obj.try_commands(&msg_ntf.content) {
@@ -291,7 +289,7 @@ fn dispatch_robot_message(
             // global 域内查找默认命令
             (x, y, true)
         } else {
-            if (default_cmd_name.is_empty()) {
+            if default_cmd_name.is_empty() {
                 return Box::new(future_ok(message::make_robot_empty_response()));
             } else {
                 return Box::new(future_ok(message::make_robot_not_found_response(format!(

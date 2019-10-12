@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse};
+use actix_web::HttpResponse;
 use futures::future::{ok as future_ok, Either, Future};
 
 use std::fs::OpenOptions;
@@ -20,7 +20,7 @@ use serde_json;
 use super::super::app;
 use super::{command, error, message, project};
 
-pub type HttpResponseFuture = Box<Future<Item = HttpResponse, Error = error::Error>>;
+pub type HttpResponseFuture = Box<dyn Future<Item = HttpResponse, Error = error::Error>>;
 
 #[derive(Clone)]
 pub struct WXWorkCommandRuntime {
@@ -94,7 +94,8 @@ fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
         output += (match reg.render_template(echo_prefix.as_str(), &runtime.envs) {
             Ok(x) => x,
             Err(e) => format!("{:?}", e),
-        }).as_str();
+        })
+        .as_str();
         output += "\r\n";
     }
 
@@ -118,11 +119,14 @@ fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
         output += (match reg.render_template(echo_suffix.as_str(), &runtime.envs) {
             Ok(x) => x,
             Err(e) => format!("{:?}", e),
-        }).as_str();
+        })
+        .as_str();
     }
 
     debug!("Help message: \n{}", output);
-    Box::new(future_ok(runtime.proj.make_markdown_response_with_text(output)))
+    Box::new(future_ok(
+        runtime.proj.make_markdown_response_with_text(output),
+    ))
 }
 
 fn run_echo(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
@@ -139,7 +143,9 @@ fn run_echo(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
     };
 
     debug!("Echo message: \n{}", echo_output);
-    Box::new(future_ok(runtime.proj.make_markdown_response_with_text(echo_output)))
+    Box::new(future_ok(
+        runtime.proj.make_markdown_response_with_text(echo_output),
+    ))
 }
 
 fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
@@ -195,11 +201,21 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                         client::Client::default().get(http_url.as_str())
                     }
                 }
-                command::WXWorkCommandHttpMethod::Get => client::Client::default().get(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Post => client::Client::default().post(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Delete => client::Client::default().delete(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Put => client::Client::default().put(http_url.as_str()),
-                command::WXWorkCommandHttpMethod::Head => client::Client::default().head(http_url.as_str()),
+                command::WXWorkCommandHttpMethod::Get => {
+                    client::Client::default().get(http_url.as_str())
+                }
+                command::WXWorkCommandHttpMethod::Post => {
+                    client::Client::default().post(http_url.as_str())
+                }
+                command::WXWorkCommandHttpMethod::Delete => {
+                    client::Client::default().delete(http_url.as_str())
+                }
+                command::WXWorkCommandHttpMethod::Put => {
+                    client::Client::default().put(http_url.as_str())
+                }
+                command::WXWorkCommandHttpMethod::Head => {
+                    client::Client::default().head(http_url.as_str())
+                }
             };
             http_request = http_request
                 .timeout(Duration::from_millis(app::app_conf().task_timeout))
@@ -208,7 +224,8 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
                     format!("Mozilla/5.0 (WXWork-Robotd {})", crate_version!()),
                 );
             if http_data.content_type.len() > 0 {
-                http_request = http_request.header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
+                http_request = http_request
+                    .header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
             }
             for (k, v) in &http_data.headers {
                 http_request = http_request.header(k.as_str(), v.as_str());
@@ -229,64 +246,62 @@ fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
         // }
     }
 
-    Box::new(http_req_f
-        .then(move |response| match response {
-            Ok(mut http_rsp) => Either::A(http_rsp.body().then(move |rsp_body| {
-                let final_output = match rsp_body {
-                    Ok(rsp_data) => {
-                        let data_str = if let Ok(x) = String::from_utf8((&rsp_data).to_vec()) {
-                            x
-                        } else {
-                            hex::encode(&rsp_data)
-                        };
-                        info!(
-                            "project \"{}\" command \"{}\" get response from {}: \n{:?}",
-                            get_project_name_from_runtime(&runtime),
-                            get_command_name_from_runtime(&runtime),
-                            http_url,
-                            data_str
-                        );
+    Box::new(http_req_f.then(move |response| match response {
+        Ok(mut http_rsp) => Either::A(http_rsp.body().then(move |rsp_body| {
+            let final_output = match rsp_body {
+                Ok(rsp_data) => {
+                    let data_str = if let Ok(x) = String::from_utf8((&rsp_data).to_vec()) {
+                        x
+                    } else {
+                        hex::encode(&rsp_data)
+                    };
+                    info!(
+                        "project \"{}\" command \"{}\" get response from {}: \n{:?}",
+                        get_project_name_from_runtime(&runtime),
+                        get_command_name_from_runtime(&runtime),
+                        http_url,
+                        data_str
+                    );
 
-                        let mut vars_for_rsp = runtime.envs.clone();
-                        if vars_for_rsp.is_object() {
-                            vars_for_rsp["WXWORK_ROBOT_HTTP_RESPONSE"] =
-                                serde_json::Value::String(data_str);
-                        }
-                        let echo_output = match reg
-                            .render_template(echo_output_tmpl_str.as_str(), &vars_for_rsp)
-                        {
+                    let mut vars_for_rsp = runtime.envs.clone();
+                    if vars_for_rsp.is_object() {
+                        vars_for_rsp["WXWORK_ROBOT_HTTP_RESPONSE"] =
+                            serde_json::Value::String(data_str);
+                    }
+                    let echo_output =
+                        match reg.render_template(echo_output_tmpl_str.as_str(), &vars_for_rsp) {
                             Ok(x) => x,
                             Err(e) => format!("{:?}", e),
                         };
-                        echo_output
-                    }
-                    Err(e) => {
-                        let err_msg = format!("{:?}", e);
-                        error!(
-                            "project \"{}\" command \"{}\" get response from {} failed: {:?}",
-                            get_project_name_from_runtime(&runtime),
-                            get_command_name_from_runtime(&runtime),
-                            http_url,
-                            err_msg
-                        );
+                    echo_output
+                }
+                Err(e) => {
+                    let err_msg = format!("{:?}", e);
+                    error!(
+                        "project \"{}\" command \"{}\" get response from {} failed: {:?}",
+                        get_project_name_from_runtime(&runtime),
+                        get_command_name_from_runtime(&runtime),
+                        http_url,
                         err_msg
-                    }
-                };
-
-                future_ok(runtime.proj.make_markdown_response_with_text(final_output))
-            })),
-            Err(e) => {
-                let err_msg = format!("Make request to {} failed, {:?}", http_url, e);
-                error!(
-                    "project \"{}\" command \"{}\" {}",
-                    runtime.proj.name(),
-                    runtime.cmd.name(),
+                    );
                     err_msg
-                );
+                }
+            };
 
-                Either::B(future_ok(runtime.proj.make_error_response(err_msg)))
-            }
-        }))
+            future_ok(runtime.proj.make_markdown_response_with_text(final_output))
+        })),
+        Err(e) => {
+            let err_msg = format!("Make request to {} failed, {:?}", http_url, e);
+            error!(
+                "project \"{}\" command \"{}\" {}",
+                runtime.proj.name(),
+                runtime.cmd.name(),
+                err_msg
+            );
+
+            Either::B(future_ok(runtime.proj.make_error_response(err_msg)))
+        }
+    }))
 }
 
 fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
@@ -370,141 +385,148 @@ fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
 
     let runtime_for_err = runtime.clone();
     let runtime_for_deadline = runtime.clone();
-    Box::new(async_job
-        .wait_with_output()
-        .map_err(move |e| {
-            let err_msg = format!("Run command failed, {:?}", e);
-            error!(
-                "project \"{}\" command \"{}\" {}",
-                runtime_for_err.proj.name(),
-                runtime_for_err.cmd.name(),
-                err_msg
-            );
-            error::Error::StringErr(err_msg)
-        }).and_then(move |output| {
-            let mut ret_msg = String::with_capacity(output.stdout.len() + output.stderr.len() + 32);
-            if output.stdout.len() > 0 {
-                ret_msg += (match String::from_utf8(output.stdout) {
-                    Ok(x) => x,
-                    Err(e) => hex::encode(e.as_bytes()),
-                }).as_str();
-            }
-
-            if output.stderr.len() > 0 {
-                let stderr_str = match String::from_utf8(output.stderr) {
-                    Ok(x) => x,
-                    Err(e) => hex::encode(e.as_bytes()),
-                };
-
-                info!(
-                    "project \"{}\" command \"{}\" run command with stderr:\n{}",
-                    runtime.proj.name(),
-                    runtime.cmd.name(),
-                    stderr_str
-                );
-                ret_msg += stderr_str.as_str();
-            }
-
-            if output.status.success() {
-                match output_type {
-                    command::WXWorkCommandSpawnOutputType::Markdown => {
-                        future_ok(runtime.proj.make_markdown_response_with_text(ret_msg))
-                    }
-                    command::WXWorkCommandSpawnOutputType::Text => {
-                        let mut mentioned_list: Vec<String> = Vec::new();
-
-                        for caps in PICK_AT_RULE.captures_iter(ret_msg.as_str()) {
-                            if let Some(m) = caps.name("AT") {
-                                mentioned_list.push(String::from(m.as_str()));
-                            }
-                        }
-
-                        let rsp = message::WXWorkMessageTextRsp {
-                            content: ret_msg,
-                            mentioned_list: mentioned_list,
-                            mentioned_mobile_list: Vec::new(),
-                        };
-
-                        future_ok(runtime.proj.make_text_response(rsp))
-                    }
-                    command::WXWorkCommandSpawnOutputType::Image => {
-                        let file_path = ret_msg.trim();
-                        let mut options = OpenOptions::new();
-                        options
-                            .write(false)
-                            .create(false)
-                            .truncate(false)
-                            .read(true);
-                        let mut err_msg = String::default();
-                        let mut image_data: Vec<u8> = Vec::new();
-
-                        if file_path.len() > 0 {
-                            match options.open(file_path) {
-                                Ok(f) => {
-                                    let mut reader = BufReader::new(f);
-                                    match reader.read_to_end(&mut image_data) {
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            err_msg = format!(
-                                                "Try read data from {} failed, {:?}",
-                                                file_path, e
-                                            );
-                                        }
-                                    }
-                                }
-                                Err(e) => {
-                                    err_msg = format!("Try to open {} failed, {:?}", file_path, e);
-                                }
-                            };
-                        }
-
-                        if image_data.len() > 0 {
-                            future_ok(runtime.proj.make_image_response(
-                                message::WXWorkMessageImageRsp {
-                                    content: image_data,
-                                },
-                            ))
-                        } else {
-                            future_ok(runtime.proj.make_text_response(
-                                message::WXWorkMessageTextRsp {
-                                    content: err_msg,
-                                    mentioned_list: vec![runtime.msg.from.alias.clone()],
-                                    mentioned_mobile_list: Vec::new(),
-                                },
-                            ))
-                        }
-                    }
-                }
-            } else {
-                future_ok(
-                    runtime
-                        .proj
-                        .make_text_response(message::WXWorkMessageTextRsp {
-                            content: ret_msg,
-                            mentioned_list: vec![runtime.msg.from.alias.clone()],
-                            mentioned_mobile_list: Vec::new(),
-                        }),
-                )
-            }
-        }).timeout(Duration::from_millis(app::app_conf().task_timeout))
-        .then(move |timeout_res| match timeout_res {
-            Ok(x) => future_ok(x),
-            Err(e) => {
-                let err_msg = format!("Run command timeout, {:?}", e);
+    Box::new(
+        async_job
+            .wait_with_output()
+            .map_err(move |e| {
+                let err_msg = format!("Run command failed, {:?}", e);
                 error!(
                     "project \"{}\" command \"{}\" {}",
-                    runtime_for_deadline.proj.name(),
-                    runtime_for_deadline.cmd.name(),
+                    runtime_for_err.proj.name(),
+                    runtime_for_err.cmd.name(),
                     err_msg
                 );
-                future_ok(runtime_for_deadline.proj.make_text_response(
-                    message::WXWorkMessageTextRsp {
-                        content: err_msg,
-                        mentioned_list: vec![runtime_for_deadline.msg.from.alias.clone()],
-                        mentioned_mobile_list: Vec::new(),
-                    },
-                ))
-            }
-        }))
+                error::Error::StringErr(err_msg)
+            })
+            .and_then(move |output| {
+                let mut ret_msg =
+                    String::with_capacity(output.stdout.len() + output.stderr.len() + 32);
+                if output.stdout.len() > 0 {
+                    ret_msg += (match String::from_utf8(output.stdout) {
+                        Ok(x) => x,
+                        Err(e) => hex::encode(e.as_bytes()),
+                    })
+                    .as_str();
+                }
+
+                if output.stderr.len() > 0 {
+                    let stderr_str = match String::from_utf8(output.stderr) {
+                        Ok(x) => x,
+                        Err(e) => hex::encode(e.as_bytes()),
+                    };
+
+                    info!(
+                        "project \"{}\" command \"{}\" run command with stderr:\n{}",
+                        runtime.proj.name(),
+                        runtime.cmd.name(),
+                        stderr_str
+                    );
+                    ret_msg += stderr_str.as_str();
+                }
+
+                if output.status.success() {
+                    match output_type {
+                        command::WXWorkCommandSpawnOutputType::Markdown => {
+                            future_ok(runtime.proj.make_markdown_response_with_text(ret_msg))
+                        }
+                        command::WXWorkCommandSpawnOutputType::Text => {
+                            let mut mentioned_list: Vec<String> = Vec::new();
+
+                            for caps in PICK_AT_RULE.captures_iter(ret_msg.as_str()) {
+                                if let Some(m) = caps.name("AT") {
+                                    mentioned_list.push(String::from(m.as_str()));
+                                }
+                            }
+
+                            let rsp = message::WXWorkMessageTextRsp {
+                                content: ret_msg,
+                                mentioned_list: mentioned_list,
+                                mentioned_mobile_list: Vec::new(),
+                            };
+
+                            future_ok(runtime.proj.make_text_response(rsp))
+                        }
+                        command::WXWorkCommandSpawnOutputType::Image => {
+                            let file_path = ret_msg.trim();
+                            let mut options = OpenOptions::new();
+                            options
+                                .write(false)
+                                .create(false)
+                                .truncate(false)
+                                .read(true);
+                            let mut err_msg = String::default();
+                            let mut image_data: Vec<u8> = Vec::new();
+
+                            if file_path.len() > 0 {
+                                match options.open(file_path) {
+                                    Ok(f) => {
+                                        let mut reader = BufReader::new(f);
+                                        match reader.read_to_end(&mut image_data) {
+                                            Ok(_) => {}
+                                            Err(e) => {
+                                                err_msg = format!(
+                                                    "Try read data from {} failed, {:?}",
+                                                    file_path, e
+                                                );
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        err_msg =
+                                            format!("Try to open {} failed, {:?}", file_path, e);
+                                    }
+                                };
+                            }
+
+                            if image_data.len() > 0 {
+                                future_ok(runtime.proj.make_image_response(
+                                    message::WXWorkMessageImageRsp {
+                                        content: image_data,
+                                    },
+                                ))
+                            } else {
+                                future_ok(runtime.proj.make_text_response(
+                                    message::WXWorkMessageTextRsp {
+                                        content: err_msg,
+                                        mentioned_list: vec![runtime.msg.from.alias.clone()],
+                                        mentioned_mobile_list: Vec::new(),
+                                    },
+                                ))
+                            }
+                        }
+                    }
+                } else {
+                    future_ok(
+                        runtime
+                            .proj
+                            .make_text_response(message::WXWorkMessageTextRsp {
+                                content: ret_msg,
+                                mentioned_list: vec![runtime.msg.from.alias.clone()],
+                                mentioned_mobile_list: Vec::new(),
+                            }),
+                    )
+                }
+            })
+            .timeout(Duration::from_millis(app::app_conf().task_timeout))
+            .then(move |timeout_res| match timeout_res {
+                Ok(x) => future_ok(x),
+                Err(e) => {
+                    let err_msg = format!("Run command timeout, {:?}", e);
+                    error!(
+                        "project \"{}\" command \"{}\" {}",
+                        runtime_for_deadline.proj.name(),
+                        runtime_for_deadline.cmd.name(),
+                        err_msg
+                    );
+                    future_ok(runtime_for_deadline.proj.make_text_response(
+                        message::WXWorkMessageTextRsp {
+                            content: err_msg,
+                            mentioned_list: vec![runtime_for_deadline.msg.from.alias.clone()],
+                            mentioned_mobile_list: Vec::new(),
+                        },
+                    ))
+                }
+            }),
+    )
     //Box::new(future_ok(runtime.proj.make_markdown_response_with_text(echo_output)))
 }
