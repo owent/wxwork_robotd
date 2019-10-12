@@ -25,4 +25,4 @@ jobs:
           env PKG_CONFIG_ALL_STATIC=1 cargo build --release --verbose --target ${{ matrix.target }}
       - name: Run tests
         run: |
-          cargo test --verbose --target ${{ matrix.target }}
+          cargo test --release --verbose --target ${{ matrix.target }}
