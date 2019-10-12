@@ -10,17 +10,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [stable]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Checkout
-      uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ matrix.rust }}
-    - name: Checkout
-      uses: actions/checkout@v1
-    - name: Build
-      run: |
-        cargo build --verbose
-    - name: Run tests
-      run: |
-        cargo test --verbose
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Build
+        run: |
+          cargo build --verbose
+      - name: Run tests
+        run: |
+          cargo test --verbose
