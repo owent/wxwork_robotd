@@ -634,6 +634,7 @@ pub fn make_robot_not_found_response(msg: String) -> HttpResponse {
 
 pub fn make_robot_empty_response() -> HttpResponse {
     HttpResponse::Ok()
+        .finish()
 }
 
 

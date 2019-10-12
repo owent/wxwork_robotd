@@ -1,22 +1,26 @@
-name: "CI&CD"
+name: "CICD"
 
 on: [push]
 
 jobs:
-  build:
+  build: # job id, can be any string
+    # Job name is Build And Publish
     name: Build
+    # This job runs on Linux
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        rust: [stable, nightly]
     runs-on: ${{ matrix.os }}
-
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - name: Checkout
+      uses: hecrj/setup-rust-action@v1
       with:
         rust-version: ${{ matrix.rust }}
-    - uses: actions/checkout@v1
+    - name: Checkout
+      uses: actions/checkout@v1
     - name: Build
-       run: cargo build --verbose
+      run: |
+        cargo build --verbose
     - name: Run tests
-       run: cargo test --verbose
+      run: |
+        cargo test --verbose
