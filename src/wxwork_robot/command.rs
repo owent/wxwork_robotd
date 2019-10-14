@@ -67,6 +67,7 @@ pub struct WXWorkCommand {
     config: serde_json::Value,
     pub hidden: bool,
     pub description: Arc<String>,
+    pub order: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +154,39 @@ pub fn read_array_from_json_object<'a>(
     None
 }
 
+pub fn read_i64_from_json_object<'a>(json: &'a serde_json::Value, name: &str) -> Option<i64> {
+    if let Some(ref x) = json.as_object() {
+        if let Some(v) = x.get(name) {
+            return match v {
+                serde_json::Value::Null => None,
+                serde_json::Value::Bool(_) => None,
+                serde_json::Value::Number(r) => {
+                    if let Some(rv) = r.as_i64() {
+                        Some(rv)
+                    } else if let Some(rv) = r.as_u64() {
+                        Some(rv as i64)
+                    } else if let Some(rv) = r.as_f64() {
+                        Some(rv as i64)
+                    } else {
+                        Some(0)
+                    }
+                }
+                serde_json::Value::String(r) => {
+                    if let Ok(rv) = r.parse::<i64>() {
+                        Some(rv)
+                    } else {
+                        None
+                    }
+                }
+                serde_json::Value::Array(_) => None,
+                serde_json::Value::Object(_) => None,
+            };
+        }
+    }
+
+    None
+}
+
 pub fn merge_envs(mut l: serde_json::Value, r: &serde_json::Value) -> serde_json::Value {
     if !l.is_object() {
         return l;
@@ -198,6 +232,14 @@ impl WXWorkCommand {
             }
         }
 
+        ret.sort_by(|l, r| {
+            if l.order != r.order {
+                l.order.cmp(&r.order)
+            } else {
+                l.name().cmp(&r.name())
+            }
+        });
+
         ret
     }
 
@@ -206,13 +248,13 @@ impl WXWorkCommand {
         let mut envs_obj = json!({});
         // read_bool_from_json_object
         let mut reg_builder = RegexBuilder::new(cmd_name);
-        reg_builder.case_insensitive(if let Some(v) =
-            read_bool_from_json_object(json, "case_insensitive")
-        {
-            v
-        } else {
-            true
-        });
+        reg_builder.case_insensitive(
+            if let Some(v) = read_bool_from_json_object(json, "case_insensitive") {
+                v
+            } else {
+                true
+            },
+        );
         reg_builder.multi_line(
             if let Some(v) = read_bool_from_json_object(json, "multi_line") {
                 v
@@ -431,6 +473,11 @@ impl WXWorkCommand {
                 Arc::new(x)
             } else {
                 Arc::new(String::default())
+            },
+            order: if let Some(x) = read_i64_from_json_object(json, "order") {
+                x
+            } else {
+                0
             },
         })
     }

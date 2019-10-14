@@ -433,10 +433,11 @@ impl AppEnvironment {
     pub fn get_global_command(
         &self,
         message: &str,
+        allow_hidden: bool,
     ) -> Option<(WXWorkCommandPtr, WXWorkCommandMatch)> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                return WXWorkProject::try_capture_commands(&(*x).cmds, message);
+                return WXWorkProject::try_capture_commands(&(*x).cmds, message, allow_hidden);
             }
         }
 

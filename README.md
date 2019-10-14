@@ -89,7 +89,14 @@
         "default": {                         // 如果找不到命令，会尝试找名称为default的命令执行，这时候
             "type": "echo",                  // 直接输出类型的命令
             "echo": "我还不认识这个指令呐!({{WXWORK_ROBOT_CMD}})", // 输出内容
+            "order": 999,                    // 命令匹配优先级，越小则越优先匹配，默认为 0
             "hidden": true                   // 是否隐藏，所有的命令都有这个选项，用户help命令隐藏这条指令的帮助信息
+        },
+        "": {                               // 如果输入了空消息，则会匹配这个命令而不是default,没有配置空命令则会直接忽略输入
+            "type": "echo",
+            "echo": "空消息，本群会话ID: {{WXWORK_ROBOT_CHAT_ID}}",
+            "order": 999,
+            "hidden": true
         },
         "(help)|(帮助)|(指令列表)": {
             "type": "help",                    // 帮助类型的命令
@@ -100,12 +107,14 @@
             "multi_line": true,                // [所有命令] 是否开启逐行匹配（默认:true，When enabled, ^ matches the beginning of lines and $ matches the end of lines.）
             "unicode": true,                   // [所有命令] 是否开启unicode支持（默认:true，When disabled, character classes such as \w only match ASCII word characters instead of all Unicode word characters）
             "octal": true,                     // [所有命令] 是否支持octal语法（默认:false）
-            "dot_matches_new_line": false      // [所有命令] .是否匹配换行符（默认:true）
+            "dot_matches_new_line": false,     // [所有命令] .是否匹配换行符（默认:true）
+            "order": 0                         // [所有命令] 命令匹配优先级，越小则越优先匹配(默认: 0)
         },
         "说\\s*(?P<MSG>[^\\r\\n]+)": {
             "type": "echo",
             "echo": "{{WXWORK_ROBOT_CMD_MSG}}", // 可以使用匹配式里的变量
-            "description": "说**消息内容**"
+            "description": "说**消息内容**",
+            "order": 2
         },
         "执行命令\\s*(?P<EXEC>[^\\s]+)\\s*(?P<PARAM>[^\\s]*)": {
             "type": "spawn",                    // 启动子进程执行命令，注意，任务超时并不会被kill掉
@@ -116,7 +125,8 @@
                 "TEST_ENV": "all env key will be WXWORK_ROBOT_CMD_{NAME IN ENV} or WXWORK_ROBOT_PROJECT_{NAME}"
             },
             "description": "执行命令**可执行文件路径** ***参数***",
-            "output_type": "输出类型"            // markdown/text
+            "output_type": "输出类型",          // markdown/text
+            "order": 2
         }
     },
     "projects": [{                                                          // 项目列表，可以每个项目对应一个机器人，也可以多个机器人共享一个项目

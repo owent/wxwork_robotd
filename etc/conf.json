@@ -10,25 +10,29 @@
     "max_concurrent_rate_per_worker": 256,
     "payload_size_limit": 262144,
     "cmds": {
-        "": {
-            "type": "echo",
-            "echo": "空消息，本群会话ID: {{WXWORK_ROBOT_CHAT_ID}}",
-            "hidden": true
-        },
         "default": {
             "type": "echo",
             "echo": "我还不认识这个指令呐!({{WXWORK_ROBOT_CMD}})",
+            "order": 999,
+            "hidden": true
+        },
+        "": {
+            "type": "echo",
+            "echo": "空消息，本群会话ID: {{WXWORK_ROBOT_CHAT_ID}}",
+            "order": 999,
             "hidden": true
         },
         "(help)|(帮助)|(指令列表)": {
             "type": "help",
             "description": "help|帮助|指令列表",
-            "prefix": "### 可用指令列表\r\n"
+            "prefix": "### 可用指令列表\r\n",
+            "order": 0
         },
         "说\\s*(?P<MSG>[^\\r\\n]+)": {
             "type": "echo",
             "echo": "{{WXWORK_ROBOT_CMD_MSG}}",
-            "description": "说**消息内容**"
+            "description": "说**消息内容**",
+            "order": 2
         },
         "执行命令\\s*(?P<EXEC>[^\\s]+)\\s*(?P<PARAM>[^\\s]*)": {
             "type": "spawn",
@@ -39,7 +43,8 @@
                 "TEST_ENV": "all env key will be WXWORK_ROBOT_CMD_{NAME IN ENV} or WXWORK_ROBOT_PROJECT_{NAME}"
             },
             "description": "执行命令**可执行文件路径** ***参数***",
-            "output_type": "markdown"
+            "output_type": "markdown",
+            "order": 2
         }
     },
     "projects": [{
@@ -64,14 +69,16 @@
                 "multi_line": true,
                 "unicode": true,
                 "octal": true,
-                "dot_matches_new_line": false
+                "dot_matches_new_line": false,
+                "order": 2
             },
             "访问\\s*(?P<URL>[^\\r\\n]+)": {
                 "type": "http",
                 "url": "{{WXWORK_ROBOT_CMD_URL}}",
                 "post": "",
                 "echo": "HTTP请求: {{WXWORK_ROBOT_CMD_URL}}\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}",
-                "description": "访问**URL地址**"
+                "description": "访问**URL地址**",
+                "order": 2
             }
         }
     }]

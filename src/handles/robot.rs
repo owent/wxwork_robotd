@@ -276,16 +276,16 @@ fn dispatch_robot_message(
     };
     // 查找匹配命令
     let (cmd_ptr, mut cmd_match_res, is_default_cmd) =
-        if let Some((x, y)) = proj_obj.try_commands(&msg_ntf.content) {
+        if let Some((x, y)) = proj_obj.try_commands(&msg_ntf.content, false) {
             // project 域内查找命令
             (x, y, false)
-        } else if let Some((x, y)) = app.get_global_command(&msg_ntf.content) {
+        } else if let Some((x, y)) = app.get_global_command(&msg_ntf.content, false) {
             // global 域内查找命令
             (x, y, false)
-        } else if let Some((x, y)) = proj_obj.try_commands(default_cmd_name) {
+        } else if let Some((x, y)) = proj_obj.try_commands(default_cmd_name, true) {
             // project 域内查找默认命令
             (x, y, true)
-        } else if let Some((x, y)) = app.get_global_command(default_cmd_name) {
+        } else if let Some((x, y)) = app.get_global_command(default_cmd_name, true) {
             // global 域内查找默认命令
             (x, y, true)
         } else {

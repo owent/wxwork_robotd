@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use super::{command, message, base64};
+use super::{base64, command, message};
 
 #[derive(Clone)]
 struct WXWorkProjectCipherInfo {
@@ -114,8 +114,8 @@ impl WXWorkProject {
             if let Some(envs_kvs) = command::read_object_from_json_object(json, "env") {
                 for (k, v) in envs_kvs {
                     envs_obj[format!("WXWORK_ROBOT_PROJECT_{}", k)
-                                 .as_str()
-                                 .to_uppercase()] = if v.is_string() {
+                        .as_str()
+                        .to_uppercase()] = if v.is_string() {
                         v.clone()
                     } else {
                         serde_json::Value::String(v.to_string())
@@ -213,13 +213,13 @@ impl WXWorkProject {
             cmds: Rc::new(proj_cmds),
 
             cipher_info: Arc::new(Mutex::new(Box::new(cipher_info))),
-            nonce: AtomicUsize::new(if let Ok(x) =
-                SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
-            {
-                (x.as_secs() as usize) << 16
-            } else {
-                (1 as usize) << 16
-            }),
+            nonce: AtomicUsize::new(
+                if let Ok(x) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+                    (x.as_secs() as usize) << 16
+                } else {
+                    (1 as usize) << 16
+                },
+            ),
         })
     }
 
@@ -230,15 +230,23 @@ impl WXWorkProject {
     pub fn try_commands(
         &self,
         message: &str,
+        allow_hidden: bool,
     ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
-        WXWorkProject::try_capture_commands(&self.cmds, message)
+        WXWorkProject::try_capture_commands(&self.cmds, message, allow_hidden)
     }
 
     pub fn try_capture_commands(
         cmds: &command::WXWorkCommandList,
         message: &str,
+        allow_hidden: bool,
     ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
         for cmd in cmds {
+            if !allow_hidden {
+                // skip hidden command
+                if cmd.is_hidden() {
+                    continue;
+                }
+            }
             let mat_res = cmd.try_capture(message);
             if mat_res.has_result() {
                 return Some((cmd.clone(), mat_res));
