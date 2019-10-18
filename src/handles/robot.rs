@@ -321,6 +321,18 @@ fn dispatch_robot_message(
         serde_json::Value::String(msg_ntf.chat_id.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_CHAT_TYPE"] =
         serde_json::Value::String(msg_ntf.chat_type.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_TYPE"] =
+        serde_json::Value::String(msg_ntf.msg_type.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_APP_VERSION"] =
+        serde_json::Value::String(msg_ntf.app_version.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_EVENT_TYPE"] =
+        serde_json::Value::String(msg_ntf.event_type.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_ACTION_NAME"] =
+        serde_json::Value::String(msg_ntf.action_name.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_ACTION_VALUE"] =
+        serde_json::Value::String(msg_ntf.action_value.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_ACTION_CALLBACKID"] =
+        serde_json::Value::String(msg_ntf.action_value.clone());
 
     // 填充模板参数json
     let template_vars = proj_obj.generate_template_vars(&cmd_match_res);

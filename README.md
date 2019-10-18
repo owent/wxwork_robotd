@@ -65,8 +65,14 @@
   * WXWORK_ROBOT_MSG_ID                     : 消息ID(版本>=0.3.6)
   * WXWORK_ROBOT_GET_CHAT_INFO_URL          : 可以用于获取消息信息的URL(版本>=0.3.9)，有效期为5分钟，调用一次后失效
   * WXWORK_ROBOT_CHAT_ID                    : chat id(版本>=0.3.9)，用于区分聊天群，如果机器人被添加到多个群，可以用这个指定主动发消息到哪个群
-  * WXWORK_ROBOT_CHAT_TYPE                  : chat type(版本>=0.6.1)，对应企业微信机器人消息的ChatType字段
+  * WXWORK_ROBOT_CHAT_TYPE                  : chat type(版本>=0.6.1)，对应企业微信机器人消息的ChatType字段（会话类型，single/group，分别表示：单聊\群聊话）
   * WXWORK_ROBOT_HTTP_RESPONSE              : HTTP回包(仅 ```type``` 为 http 时的echo字段可用)
+  * WXWORK_ROBOT_MSG_TYPE                   : msg type(版本>=0.7.0)，对应企业微信机器人消息的MsgType字段（text/event/attachment）
+  * WXWORK_ROBOT_APP_VERSION                : msg type(版本>=0.7.0)，对应企业微信机器人消息的AppVersion字段
+  * WXWORK_ROBOT_EVENT_TYPE                 : msg type(版本>=0.7.0)，对应企业微信机器人消息的EventType字段（目前可能是add_to_chat表示被添加进群，或者delete_from_chat表示被移出群, enter_chat 表示用户进入机器人单聊）
+  * WXWORK_ROBOT_ACTION_NAME                : msg type(版本>=0.7.0)，对应企业微信机器人消息的Actions.Name字段（用户点击按钮的名字）
+  * WXWORK_ROBOT_ACTION_VALUE               : msg type(版本>=0.7.0)，对应企业微信机器人消息的Actions.Value字段（用户点击按钮的值）
+  * WXWORK_ROBOT_ACTION_CALLBACKID          : msg type(版本>=0.7.0)，对应企业微信机器人消息的Attachment.CallbackId字段（attachment中设置的回调id）
 
 
 ## 配置说明

@@ -1,5 +1,5 @@
-use bytes::buf::IntoBuf;
 use actix_web::web;
+use bytes::buf::IntoBuf;
 use openssl::hash;
 
 // use hex;
@@ -38,6 +38,11 @@ pub struct WXWorkMessageNtf {
     pub chat_id: String,
     pub chat_type: String,
     pub get_chat_info_url: String,
+    pub app_version: String,
+    pub event_type: String,
+    pub action_name: String,
+    pub action_value: String,
+    pub action_callbackid: String,
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +125,11 @@ enum WXWorkMsgField {
     GetChatInfoUrl,
     ChatId,
     ChatType,
+    AppVersion,
+    EventType,
+    ActionName,
+    ActionValue,
+    ActionCallbackID,
 }
 
 pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
@@ -133,7 +143,14 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
     let mut chat_id = String::default();
     let mut chat_type = String::default();
     let mut get_chat_info_url = String::default();
+    let mut app_version = String::default();
+    let mut event_type = String::default();
+    let mut action_name = String::default();
+    let mut action_value = String::default();
+    let mut action_callbackid = String::default();
     let mut is_in_from = false;
+    let mut is_in_event = false;
+    let mut is_in_attachment = false;
     let mut field_mode = WXWorkMsgField::NONE;
 
     let mut reader = Reader::from_str(input);
@@ -153,6 +170,18 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         is_in_from = true;
                         debug!("Parse get ready for From");
                     }
+                    b"Event" => {
+                        is_in_event = true;
+                        debug!("Parse get ready for Event");
+                    }
+                    b"Attachment" => {
+                        is_in_attachment = true;
+                        debug!("Parse get ready for Attachment");
+                    }
+                    b"AppVersion" => {
+                        field_mode = WXWorkMsgField::AppVersion;
+                        debug!("Parse get ready for AppVersion");
+                    }
                     b"UserId" => {
                         if is_in_from {
                             field_mode = WXWorkMsgField::FromUserId;
@@ -163,12 +192,33 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         if is_in_from {
                             field_mode = WXWorkMsgField::FromName;
                             debug!("Parse get ready for From.Name");
+                        } else if is_in_attachment {
+                            field_mode = WXWorkMsgField::ActionName;
+                            debug!("Parse get ready for Attachment.Actions.Name");
+                        }
+                    }
+                    b"Value" => {
+                        if is_in_attachment {
+                            field_mode = WXWorkMsgField::ActionValue;
+                            debug!("Parse get ready for Attachment.Actions.Value");
+                        }
+                    }
+                    b"CallbackId" => {
+                        if is_in_attachment {
+                            field_mode = WXWorkMsgField::ActionCallbackID;
+                            debug!("Parse get ready for Attachment.CallbackId");
                         }
                     }
                     b"Alias" => {
                         if is_in_from {
                             field_mode = WXWorkMsgField::FromAlias;
                             debug!("Parse get ready for From.Alias");
+                        }
+                    }
+                    b"EventType" => {
+                        if is_in_event {
+                            field_mode = WXWorkMsgField::EventType;
+                            debug!("Parse get ready for Event.EventType");
                         }
                     }
                     b"MsgType" => {
@@ -206,7 +256,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         );
                     }
                 }
-            },
+            }
             Ok(Event::End(ref e)) => match e.name() {
                 b"WebhookUrl" => {
                     if let WXWorkMsgField::WebHookUrl = field_mode {
@@ -217,6 +267,20 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                 b"From" => {
                     is_in_from = false;
                     debug!("Parse close for From");
+                }
+                b"Event" => {
+                    is_in_event = false;
+                    debug!("Parse close for Event");
+                }
+                b"Attachment" => {
+                    is_in_attachment = false;
+                    debug!("Parse close for Attachment");
+                }
+                b"AppVersion" => {
+                    if let WXWorkMsgField::AppVersion = field_mode {
+                        field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for AppVersion");
+                    }
                 }
                 b"UserId" => {
                     if is_in_from {
@@ -232,6 +296,27 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                             field_mode = WXWorkMsgField::NONE;
                             debug!("Parse close for From.Name");
                         }
+                    } else if is_in_attachment {
+                        if let WXWorkMsgField::ActionName = field_mode {
+                            field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for Attachment.Actions.Name");
+                        }
+                    }
+                }
+                b"Value" => {
+                    if is_in_attachment {
+                        if let WXWorkMsgField::ActionValue = field_mode {
+                            field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for Attachment.Actions.Value");
+                        }
+                    }
+                }
+                b"CallbackId" => {
+                    if is_in_attachment {
+                        if let WXWorkMsgField::ActionCallbackID = field_mode {
+                            field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for Attachment.CallbackId");
+                        }
                     }
                 }
                 b"Alias" => {
@@ -239,6 +324,14 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         if let WXWorkMsgField::FromAlias = field_mode {
                             field_mode = WXWorkMsgField::NONE;
                             debug!("Parse close for From.Alias");
+                        }
+                    }
+                }
+                b"EventType" => {
+                    if is_in_event {
+                        if let WXWorkMsgField::EventType = field_mode {
+                            field_mode = WXWorkMsgField::NONE;
+                            debug!("Parse close for Event.EventType");
                         }
                     }
                 }
@@ -289,79 +382,97 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     );
                 }
             },
-            Ok(Event::CData(data)) | Ok(Event::Text(data)) => {
-                loop {
-                    if let WXWorkMsgField::NONE = field_mode {
-                        break;
-                    }
-
-                    let data_str_opt = if let Ok(x) = data.unescaped() {
-                        match String::from_utf8(Vec::from(x)) {
-                            Ok(s) => Some(s),
-                            Err(e) => {
-                                error!("decode Encrypt as utf8 failed, {:?}", e);
-                                None
-                            }
-                        }
-                    } else {
-                        None
-                    };
-
-                    let data_str = if let Some(x) = data_str_opt {
-                        x
-                    } else {
-                        break;
-                    };
-
-                    match field_mode {
-                        WXWorkMsgField::WebHookUrl => {
-                            web_hook_url = data_str;
-                            debug!("Parse data for WebhookUrl");
-                        }
-                        WXWorkMsgField::FromUserId => {
-                            from_user_id = data_str;
-                            debug!("Parse data for From.UserId");
-                        }
-                        WXWorkMsgField::FromName => {
-                            from_name = data_str;
-                            debug!("Parse data for From.Name");
-                        }
-                        WXWorkMsgField::FromAlias => {
-                            from_alias = data_str;
-                            debug!("Parse data for From.Alias");
-                        }
-                        WXWorkMsgField::MsgType => {
-                            msg_type = data_str;
-                            debug!("Parse data for MsgType");
-                        }
-                        WXWorkMsgField::Content => {
-                            content = data_str;
-                            debug!("Parse data for Content");
-                        }
-                        WXWorkMsgField::MsgId => {
-                            msg_id = data_str;
-                            debug!("Parse data for MsgId");
-                        }
-                        WXWorkMsgField::GetChatInfoUrl => {
-                            get_chat_info_url = data_str;
-                            debug!("Parse data for GetChatInfoUrl");
-                        }
-                        WXWorkMsgField::ChatId => {
-                            chat_id = data_str;
-                            debug!("Parse data for ChatId");
-                        }
-                        WXWorkMsgField::ChatType => {
-                            chat_type = data_str;
-                            debug!("Parse data for ChatId");
-                        }
-                        _ => {
-                            debug!("Ignore data {}", data_str);
-                        }
-                    }
-
+            Ok(Event::CData(data)) | Ok(Event::Text(data)) => loop {
+                if let WXWorkMsgField::NONE = field_mode {
                     break;
                 }
-            }
+
+                let data_str_opt = if let Ok(x) = data.unescaped() {
+                    match String::from_utf8(Vec::from(x)) {
+                        Ok(s) => Some(s),
+                        Err(e) => {
+                            error!("decode Encrypt as utf8 failed, {:?}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                let data_str = if let Some(x) = data_str_opt {
+                    x
+                } else {
+                    break;
+                };
+
+                match field_mode {
+                    WXWorkMsgField::WebHookUrl => {
+                        web_hook_url = data_str;
+                        debug!("Parse data for WebhookUrl");
+                    }
+                    WXWorkMsgField::FromUserId => {
+                        from_user_id = data_str;
+                        debug!("Parse data for From.UserId");
+                    }
+                    WXWorkMsgField::FromName => {
+                        from_name = data_str;
+                        debug!("Parse data for From.Name");
+                    }
+                    WXWorkMsgField::FromAlias => {
+                        from_alias = data_str;
+                        debug!("Parse data for From.Alias");
+                    }
+                    WXWorkMsgField::MsgType => {
+                        msg_type = data_str;
+                        debug!("Parse data for MsgType");
+                    }
+                    WXWorkMsgField::Content => {
+                        content = data_str;
+                        debug!("Parse data for Content");
+                    }
+                    WXWorkMsgField::MsgId => {
+                        msg_id = data_str;
+                        debug!("Parse data for MsgId");
+                    }
+                    WXWorkMsgField::GetChatInfoUrl => {
+                        get_chat_info_url = data_str;
+                        debug!("Parse data for GetChatInfoUrl");
+                    }
+                    WXWorkMsgField::ChatId => {
+                        chat_id = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    WXWorkMsgField::ChatType => {
+                        chat_type = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    WXWorkMsgField::AppVersion => {
+                        app_version = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    WXWorkMsgField::EventType => {
+                        event_type = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    WXWorkMsgField::ActionCallbackID => {
+                        action_callbackid = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    WXWorkMsgField::ActionName => {
+                        action_name = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    WXWorkMsgField::ActionValue => {
+                        action_value = data_str;
+                        debug!("Parse data for ChatId");
+                    }
+                    _ => {
+                        debug!("Ignore data {}", data_str);
+                    }
+                }
+
+                break;
+            },
             Err(e) => error!("Error at position {}: {:?}", reader.buffer_position(), e),
             Ok(Event::Eof) => break,
             _ => {}
@@ -397,6 +508,11 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         chat_id: chat_id,
         chat_type: chat_type,
         get_chat_info_url: get_chat_info_url,
+        app_version: app_version,
+        event_type: event_type,
+        action_name: action_name,
+        action_value: action_value,
+        action_callbackid: action_callbackid,
     })
 }
 
@@ -506,8 +622,8 @@ pub fn pack_image_message(msg: WXWorkMessageImageRsp) -> Result<String, String> 
                 let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
                     match base64::STANDARD.encode(&msg.content) {
                         Ok(x) => x,
-                        Err(e) => e.message
-                    }
+                        Err(e) => e.message,
+                    },
                 )));
                 let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Base64")));
             }
@@ -633,10 +749,8 @@ pub fn make_robot_not_found_response(msg: String) -> HttpResponse {
 }
 
 pub fn make_robot_empty_response() -> HttpResponse {
-    HttpResponse::Ok()
-        .finish()
+    HttpResponse::Ok().finish()
 }
-
 
 #[cfg(test)]
 mod tests {

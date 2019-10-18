@@ -1,6 +1,6 @@
 [package]
 name = "wxwork_robotd"
-version = "0.6.2"
+version = "0.7.0"
 description = "Robot service for WXWork"
 authors = ["owent <admin@owent.net>"]
 documentation = "https://github.com/owt5008137/wxwork_robotd"
