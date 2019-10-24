@@ -262,9 +262,14 @@ impl WXWorkProject {
         allow_hidden: bool,
     ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
         for cmd in cmds {
+            // empty message must equal
+            if cmd.name().is_empty() && !message.is_empty() {
+                continue;
+            }
+
             if !allow_hidden {
-                // skip hidden ang empty command
-                if cmd.is_hidden() || cmd.name().is_empty() {
+                // skip hidden command
+                if cmd.is_hidden() {
                     continue;
                 }
             }
