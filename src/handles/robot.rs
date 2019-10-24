@@ -269,40 +269,56 @@ fn dispatch_robot_message(
         )));
     };
 
-    let default_cmd_name = if msg_ntf.content.trim().is_empty() {
-        ""
-    } else {
-        "default"
-    };
-    // 查找匹配命令
-    let (cmd_ptr, mut cmd_match_res, is_default_cmd) =
-        if let Some((x, y)) = proj_obj.try_commands(&msg_ntf.content, false) {
-            // project 域内查找命令
-            (x, y, false)
-        } else if let Some((x, y)) = app.get_global_command(&msg_ntf.content, false) {
-            // global 域内查找命令
-            (x, y, false)
-        } else if let Some((x, y)) = proj_obj.try_commands(default_cmd_name, true) {
-            // project 域内查找默认命令
-            (x, y, true)
-        } else if let Some((x, y)) = app.get_global_command(default_cmd_name, true) {
-            // global 域内查找默认命令
-            (x, y, true)
+    let (cmd_ptr, mut cmd_match_res) = if msg_ntf.event_type.is_empty() {
+        let default_cmd_name = if msg_ntf.content.trim().is_empty() {
+            ""
         } else {
-            if default_cmd_name.is_empty() {
-                return Box::new(future_ok(message::make_robot_empty_response()));
+            "default"
+        };
+        // 查找匹配命令
+        let (cp, mut cmr, is_default_cmd) =
+            if let Some((x, y)) = proj_obj.try_commands(&msg_ntf.content, false) {
+                // project 域内查找命令
+                (x, y, false)
+            } else if let Some((x, y)) = app.get_global_command(&msg_ntf.content, false) {
+                // global 域内查找命令
+                (x, y, false)
+            } else if let Some((x, y)) = proj_obj.try_commands(default_cmd_name, true) {
+                // project 域内查找默认命令
+                (x, y, true)
+            } else if let Some((x, y)) = app.get_global_command(default_cmd_name, true) {
+                // global 域内查找默认命令
+                (x, y, true)
             } else {
-                return Box::new(future_ok(message::make_robot_not_found_response(format!(
-                    "project \"{}\" get command from {} failed",
-                    project_name, msg_ntf.content
-                ))));
-            }
+                if default_cmd_name.is_empty() {
+                    return Box::new(future_ok(message::make_robot_empty_response()));
+                } else {
+                    return Box::new(future_ok(message::make_robot_not_found_response(format!(
+                        "project \"{}\" get command from {} failed",
+                        project_name, msg_ntf.content
+                    ))));
+                }
+            };
+
+        if is_default_cmd {
+            cmr.mut_json()["WXWORK_ROBOT_CMD"] = serde_json::Value::String(msg_ntf.content.clone());
+        }
+
+        (cp, cmr)
+    } else {
+        // 查找匹配事件
+        let (cp, cmr, _) = if let Some((x, y)) = proj_obj.try_events(&msg_ntf.event_type, true) {
+            // project 域内查找事件
+            (x, y, false)
+        } else if let Some((x, y)) = app.get_global_event(&msg_ntf.event_type, true) {
+            // global 域内查找事件
+            (x, y, false)
+        } else {
+            return Box::new(future_ok(message::make_robot_empty_response()));
         };
 
-    if is_default_cmd {
-        cmd_match_res.mut_json()["WXWORK_ROBOT_CMD"] =
-            serde_json::Value::String(msg_ntf.content.clone());
-    }
+        (cp, cmr)
+    };
     cmd_match_res.mut_json()["WXWORK_ROBOT_WEBHOOK_KEY"] =
         serde_json::Value::String(msg_ntf.web_hook_key.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_WEBHOOK_URL"] =

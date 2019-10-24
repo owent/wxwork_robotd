@@ -64,6 +64,7 @@ pub fn run(
             command::WXWorkCommandData::HTTP(_) => run_http,
             command::WXWorkCommandData::HELP(_) => run_help,
             command::WXWorkCommandData::SPAWN(_) => run_spawn,
+            command::WXWorkCommandData::IGNORE => run_ignore,
             // _ => run_test,
         }
     }
@@ -78,6 +79,10 @@ fn run_test(_: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
             .content_type("text/html; charset=utf-8")
             .body("test success"),
     ))
+}
+
+fn run_ignore(_: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {
+    Box::new(future_ok(message::make_robot_empty_response()))
 }
 
 fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponseFuture {

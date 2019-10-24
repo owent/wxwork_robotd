@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 pub struct WXWorkProjectSet {
     pub projs: project::WXWorkProjectMap,
     pub cmds: Rc<command::WXWorkCommandList>,
+    pub events: Rc<command::WXWorkCommandList>,
 }
 
 pub type WXWorkProjectSetShared = Arc<Mutex<WXWorkProjectSet>>;
@@ -46,9 +47,16 @@ pub fn build_project_set(json: &serde_json::Value) -> Option<WXWorkProjectSet> {
         &GLOBAL_EMPTY_JSON_NULL
     };
 
+    let events_json_conf = if let Some(x) = kvs.get("events") {
+        x
+    } else {
+        &GLOBAL_EMPTY_JSON_NULL
+    };
+
     let ret = WXWorkProjectSet {
         projs: project::WXWorkProject::parse(projs_json_conf),
         cmds: Rc::new(command::WXWorkCommand::parse(cmds_json_conf)),
+        events: Rc::new(command::WXWorkCommand::parse(events_json_conf)),
     };
 
     Some(ret)

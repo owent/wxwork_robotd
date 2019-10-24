@@ -27,6 +27,7 @@ pub struct WXWorkProject {
     pub encoding_aes_key: String,
     pub envs: Rc<serde_json::Value>,
     pub cmds: Rc<command::WXWorkCommandList>,
+    pub events: Rc<command::WXWorkCommandList>,
 
     cipher_info: Arc<Mutex<Box<WXWorkProjectCipherInfo>>>,
     nonce: AtomicUsize,
@@ -64,6 +65,7 @@ impl WXWorkProject {
         let proj_token: String;
         let proj_aes_key: String;
         let proj_cmds: command::WXWorkCommandList;
+        let proj_events: command::WXWorkCommandList;
         let mut envs_obj = json!({});
 
         {
@@ -126,6 +128,16 @@ impl WXWorkProject {
 
             if let Some(kvs) = json.as_object() {
                 if let Some(cmds_json) = kvs.get("cmds") {
+                    proj_events = command::WXWorkCommand::parse(cmds_json);
+                } else {
+                    proj_events = Vec::new();
+                }
+            } else {
+                proj_events = Vec::new();
+            }
+
+            if let Some(kvs) = json.as_object() {
+                if let Some(cmds_json) = kvs.get("events") {
                     proj_cmds = command::WXWorkCommand::parse(cmds_json);
                 } else {
                     proj_cmds = Vec::new();
@@ -211,6 +223,7 @@ impl WXWorkProject {
             encoding_aes_key: proj_aes_key,
             envs: Rc::new(envs_obj),
             cmds: Rc::new(proj_cmds),
+            events: Rc::new(proj_events),
 
             cipher_info: Arc::new(Mutex::new(Box::new(cipher_info))),
             nonce: AtomicUsize::new(
@@ -235,6 +248,14 @@ impl WXWorkProject {
         WXWorkProject::try_capture_commands(&self.cmds, message, allow_hidden)
     }
 
+    pub fn try_events(
+        &self,
+        message: &str,
+        allow_hidden: bool,
+    ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
+        WXWorkProject::try_capture_commands(&self.events, message, allow_hidden)
+    }
+
     pub fn try_capture_commands(
         cmds: &command::WXWorkCommandList,
         message: &str,
@@ -242,8 +263,8 @@ impl WXWorkProject {
     ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
         for cmd in cmds {
             if !allow_hidden {
-                // skip hidden command
-                if cmd.is_hidden() {
+                // skip hidden ang empty command
+                if cmd.is_hidden() || cmd.name().is_empty() {
                     continue;
                 }
             }

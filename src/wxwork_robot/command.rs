@@ -56,6 +56,7 @@ pub enum WXWorkCommandData {
     SPAWN(Arc<WXWorkCommandSpawn>),
     HTTP(Arc<WXWorkCommandHttp>),
     HELP(Arc<WXWorkCommandHelp>),
+    IGNORE,
 }
 
 #[derive(Debug, Clone)]
@@ -305,7 +306,7 @@ impl WXWorkCommand {
                 return None;
             };
 
-            cmd_data = match type_name.as_str() {
+            cmd_data = match type_name.to_lowercase().as_str() {
                 "echo" => WXWorkCommandData::ECHO(Arc::new(WXWorkCommandEcho {
                     echo: if let Some(x) = read_string_from_json_object(json, "echo") {
                         x
@@ -439,7 +440,7 @@ impl WXWorkCommand {
                         String::default()
                     },
                 })),
-
+                "ignore" => WXWorkCommandData::IGNORE,
                 _ => {
                     error!("command {} configure type invalid: {}", cmd_name, json);
                     return None;

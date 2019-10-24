@@ -773,6 +773,10 @@ mod tests {
             assert_eq!(msg.msg_type, "text");
             assert_eq!(msg.chat_id, "fakechatid");
             assert_eq!(msg.chat_type, "group");
+            assert!(msg.event_type.is_empty());
+            assert!(msg.action_name.is_empty());
+            assert!(msg.action_value.is_empty());
+            assert!(msg.action_callbackid.is_empty());
         }
     }
 
@@ -789,6 +793,88 @@ mod tests {
             assert_eq!(msg.msg_type, "text");
             assert_eq!(msg.chat_id, "fakechatid");
             assert_eq!(msg.chat_type, "group");
+            assert!(msg.event_type.is_empty());
+            assert!(msg.action_name.is_empty());
+            assert!(msg.action_value.is_empty());
+            assert!(msg.action_callbackid.is_empty());
+        }
+    }
+    const WXWORKROBOT_TEST_MSG_EVENT: &str = r#"<xml>
+        <WebhookUrl> <![CDATA[https://qyapi.weixin.qq.com/xxxxxxx]]></WebhookUrl>
+        <ChatId><![CDATA[wrkSFfCgAALFgnrSsWU38puiv4yvExuw]]></ChatId>
+        <ChatType>single</ChatType>
+        <GetChatInfoUrl><![CDATA[https://qyapi.weixin.qq.com/cgi-bin/webhook/get_chat_info?code=m49c5aRCdEP8_QQdZmTNR52yJ5TLGcIMzaLJk3x5KqY]]></GetChatInfoUrl>
+        <From>
+            <UserId>zhangsan</UserId>
+            <Name><![CDATA[张三]]></Name>
+            <Alias><![CDATA[jackzhang]]></Alias>
+        </From>
+        <MsgType>event</MsgType>
+        <Event>
+            <EventType><![CDATA[add_to_chat]]></EventType>
+        </Event>
+        <AppVersion><![CDATA[2.8.12.1551]]></AppVersion>
+        <MsgId>abcdabcdabcd</MsgId>
+    </xml>"#;
+
+    #[test]
+    fn decode_wxwork_robot_msg_event() {
+        let decode_res = get_msg_from_str(WXWORKROBOT_TEST_MSG_EVENT);
+        assert!(decode_res.is_some());
+        if let Some(msg) = decode_res {
+            assert!(msg.content.is_empty());
+            assert_eq!(msg.from.user_id, "zhangsan");
+            assert_eq!(msg.from.name, "张三");
+            assert_eq!(msg.from.alias, "jackzhang");
+            assert_eq!(msg.msg_id, "abcdabcdabcd");
+            assert_eq!(msg.msg_type, "event");
+            assert_eq!(msg.chat_id, "wrkSFfCgAALFgnrSsWU38puiv4yvExuw");
+            assert_eq!(msg.chat_type, "single");
+            assert_eq!(msg.event_type, "add_to_chat");
+            assert_eq!(msg.app_version, "2.8.12.1551");
+            assert!(msg.action_name.is_empty());
+            assert!(msg.action_value.is_empty());
+            assert!(msg.action_callbackid.is_empty());
+        }
+    }
+
+    const WXWORKROBOT_TEST_MSG_ATTACHMENT: &str = r#"<xml>
+        <WebhookUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxx]]></WebhookUrl>
+        <ChatId><![CDATA[xxxxx]]></ChatId>
+        <ChatType>single</ChatType>
+        <From>
+            <UserId><![CDATA[zhangsan]]></UserId>
+            <Name><![CDATA[张三]]></Name>
+            <Alias><![CDATA[zhangsan]]></Alias>
+        </From>
+        <MsgId><![CDATA[xxxxx]]></MsgId>
+        <MsgType><![CDATA[attachment]]></MsgType>
+        <Attachment>
+            <CallbackId><![CDATA[check_more]]></CallbackId>
+            <Actions>
+                <Name><![CDATA[button_more]]></Name>
+                <Value><![CDATA[button_more]]></Value>
+            </Actions>
+        </Attachment>
+    </xml>"#;
+
+    #[test]
+    fn decode_wxwork_robot_msg_attachment() {
+        let decode_res = get_msg_from_str(WXWORKROBOT_TEST_MSG_ATTACHMENT);
+        assert!(decode_res.is_some());
+        if let Some(msg) = decode_res {
+            assert!(msg.content.is_empty());
+            assert_eq!(msg.from.user_id, "zhangsan");
+            assert_eq!(msg.from.name, "张三");
+            assert_eq!(msg.from.alias, "zhangsan");
+            assert_eq!(msg.msg_id, "xxxxx");
+            assert_eq!(msg.msg_type, "attachment");
+            assert_eq!(msg.chat_id, "xxxxx");
+            assert_eq!(msg.chat_type, "single");
+            assert!(msg.event_type.is_empty());
+            assert_eq!(msg.action_name, "button_more");
+            assert_eq!(msg.action_value, "button_more");
+            assert_eq!(msg.action_callbackid, "check_more");
         }
     }
 }

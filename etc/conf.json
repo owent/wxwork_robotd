@@ -47,6 +47,16 @@
             "order": 2
         }
     },
+    "events": {
+        "add_to_chat": {
+            "type": "echo",
+            "echo": "Hi, 大家好"
+        },
+        "enter_chat": {
+            "type": "echo",
+            "echo": "Hi, {{WXWORK_ROBOT_MSG_FROM_NAME}}"
+        }
+    },
     "projects": [{
         "name": "test_proj",
         "token": "hJqcu3uJ9Tn2gXPmxx2w9kkCkCE2EPYo",
@@ -79,6 +89,12 @@
                 "echo": "HTTP请求: {{WXWORK_ROBOT_CMD_URL}}\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}",
                 "description": "访问**URL地址**",
                 "order": 2
+            }
+        },
+        "events": {
+            "delete_from_chat": {
+                "type": "echo",
+                "echo": "再见"
             }
         }
     }]

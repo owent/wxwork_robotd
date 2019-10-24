@@ -98,9 +98,9 @@
             "order": 999,                    // 命令匹配优先级，越小则越优先匹配，默认为 0
             "hidden": true                   // 是否隐藏，所有的命令都有这个选项，用户help命令隐藏这条指令的帮助信息
         },
-        "": {                               // 如果输入了空消息，则会匹配这个命令而不是default,没有配置空命令则会直接忽略输入
+        "": {                               // 如果输入了空消息或者attachment消息，则会匹配这个命令而不是default,没有配置空命令则会直接忽略输入
             "type": "echo",
-            "echo": "空消息，本群会话ID: {{WXWORK_ROBOT_CHAT_ID}}",
+            "echo": "Hello, 本群会话ID: {{WXWORK_ROBOT_CHAT_ID}}",
             "order": 999,
             "hidden": true
         },
@@ -135,6 +135,16 @@
             "order": 2
         }
     },
+    "events": {                                                             // 这里的事件所有project共享
+        "add_to_chat": {                                                    // 加入群聊（内容和命令一样）
+            "type": "echo",
+            "echo": "Hi, 大家好"
+        },
+        "enter_chat": {                                                     // 加入单聊（内容和命令一样）
+            "type": "echo",
+            "echo": "Hi, {{WXWORK_ROBOT_MSG_FROM_NAME}}"
+        }
+    },
     "projects": [{                                                          // 项目列表，可以每个项目对应一个机器人，也可以多个机器人共享一个项目
         "name": "test_proj",                                                // 名称，影响机器人回调路径，比如说这里的配置就是: http://外网IP:/12019/test_proj/
         "token": "hJqcu3uJ9Tn2gXPmxx2w9kkCkCE2EPYo",                        // 对应机器人里配置的Token
@@ -160,6 +170,12 @@
                 "post": "",
                 "echo": "HTTP请求: {{WXWORK_ROBOT_CMD_URL}}\r\n{{WXWORK_ROBOT_HTTP_RESPONSE}}",
                 "description": "访问**URL地址**"
+            }
+        },
+        "events": {                                                           // 这里的事件仅当前project有效
+            "delete_from_chat": {                                             // 离开群聊
+                "type": "echo",
+                "echo": "再见"
             }
         }
     }]

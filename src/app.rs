@@ -444,6 +444,20 @@ impl AppEnvironment {
         None
     }
 
+    pub fn get_global_event(
+        &self,
+        message: &str,
+        allow_hidden: bool,
+    ) -> Option<(WXWorkCommandPtr, WXWorkCommandMatch)> {
+        if let Some(projs) = self.get_projects() {
+            if let Ok(x) = projs.lock() {
+                return WXWorkProject::try_capture_commands(&(*x).events, message, allow_hidden);
+            }
+        }
+
+        None
+    }
+
     /// Get global command list.
     ///
     /// **This is a high cost API**
