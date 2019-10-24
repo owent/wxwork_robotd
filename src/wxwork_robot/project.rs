@@ -128,16 +128,6 @@ impl WXWorkProject {
 
             if let Some(kvs) = json.as_object() {
                 if let Some(cmds_json) = kvs.get("cmds") {
-                    proj_events = command::WXWorkCommand::parse(cmds_json);
-                } else {
-                    proj_events = Vec::new();
-                }
-            } else {
-                proj_events = Vec::new();
-            }
-
-            if let Some(kvs) = json.as_object() {
-                if let Some(cmds_json) = kvs.get("events") {
                     proj_cmds = command::WXWorkCommand::parse(cmds_json);
                 } else {
                     proj_cmds = Vec::new();
@@ -146,9 +136,26 @@ impl WXWorkProject {
                 proj_cmds = Vec::new();
             }
 
+            if let Some(kvs) = json.as_object() {
+                if let Some(cmds_json) = kvs.get("events") {
+                    proj_events = command::WXWorkCommand::parse(cmds_json);
+                } else {
+                    proj_events = Vec::new();
+                }
+            } else {
+                proj_events = Vec::new();
+            }
+
             for cmd in proj_cmds.iter() {
                 info!(
                     "project \"{}\" load command \"{}\" success",
+                    proj_name,
+                    cmd.name()
+                );
+            }
+            for cmd in proj_events.iter() {
+                info!(
+                    "project \"{}\" load event \"{}\" success",
                     proj_name,
                     cmd.name()
                 );

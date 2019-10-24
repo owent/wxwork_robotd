@@ -327,7 +327,7 @@ impl AppEnvironment {
         let tail = if is_html { "</table>" } else { "" };
         let row_begin = if is_html { "<tr><td>" } else { "" };
         let row_split = if is_html { "</td><td>" } else { ": " };
-        let row_end = if is_html { "</td></tr>" } else { "" };
+        let row_end = if is_html { "</td></tr>" } else { "\n" };
         let mut row_host = String::from("");
         for v in self.get_hosts() {
             if let Ok(saddr_iter) = v.to_socket_addrs() {
@@ -409,6 +409,10 @@ impl AppEnvironment {
 
                 for cmd in ref_x.cmds.iter() {
                     info!("load global command \"{}\" success", cmd.name());
+                }
+
+                for cmd in ref_x.events.iter() {
+                    info!("load global event \"{}\" success", cmd.name());
                 }
             }
         }
