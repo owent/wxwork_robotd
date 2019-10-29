@@ -1,8 +1,10 @@
 [package]
 name = "wxwork_robotd"
 version = "0.7.0"
+readme = "README.md"
 description = "Robot service for WXWork"
 authors = ["owent <admin@owent.net>"]
+homepage = "https://crates.io/crates/wxwork_robotd"
 documentation = "https://github.com/owt5008137/wxwork_robotd"
 repository = "https://github.com/owt5008137/wxwork_robotd"
 keywords = ["wxwork", "wework", "robot", "weixin", "wechat"]
