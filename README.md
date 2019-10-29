@@ -199,8 +199,8 @@
     > 可以通过 ```rustup target list``` 来查看支持的架构
 4. 克隆仓库并进入主目录
 5. 如果是Windows环境，需要准备openssl开发包，并通过环境变量 ```OPENSSL_DIR``` 来指定安装包。(其他环境可略过这步)
-    > 可以从 http://slproweb.com/products/Win32OpenSSL.html 下载预编译包，必须用完整版，不能用Light版本
-    > 然后设置环境变量 ```X86_64_PC_WINDOWS_MSVC_OPENSSL_DIR=C:/Program Files/OpenSSL-Win64``` (请替换成你的安装目录)
+    > + 可以从 http://slproweb.com/products/Win32OpenSSL.html 下载预编译包，必须用完整版，不能用Light版本。然后设置环境变量 ```X86_64_PC_WINDOWS_MSVC_OPENSSL_DIR=C:/Program Files/OpenSSL-Win64``` (请替换成你的安装目录)
+    > + 或者使用 [vcpkg][3] 来安装（需要设置环境变量: ```VCPKG_ROOT=vcpkg仓库目录``` , ```VCPKGRS_DYNAMIC=1```）。[vcpkg][3]得安装方法请参考[官方文档][3]。
 6. 运行编译命令: ```cargo build```
 
 更多详情见： https://rustup.rs/ 
@@ -211,3 +211,4 @@
 
 [1]: https://crates.io/crates/handlebars
 [2]: https://docs.rs/regex/
+[3]: https://github.com/Microsoft/vcpkg
