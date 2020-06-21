@@ -5,9 +5,9 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
+use chrono::Local;
 use log;
 use log::{Level, Log, Metadata, Record, SetLoggerError};
-use time;
 
 struct FileRotateLoggerRuntime {
     pub current_rotate: i32,
@@ -127,10 +127,11 @@ impl Log for FileRotateLogger {
 
             let mut written_len = 0;
             if let Some(ref mut file) = runtime.current_file {
+                let now = Local::now();
                 let content = if record.file().is_some() && record.line().is_some() {
                     format!(
                         "{} {:<5} [{}:{}@{}] {}\n",
-                        time::strftime("%Y-%m-%d %H:%M:%S", &time::now()).unwrap(),
+                        now.format("%Y-%m-%d %H:%M:%S").to_string(),
                         record.level().to_string(),
                         record.file().unwrap(),
                         record.line().unwrap(),
@@ -140,7 +141,7 @@ impl Log for FileRotateLogger {
                 } else {
                     format!(
                         "{} {:<5} [{}] {}\n",
-                        time::strftime("%Y-%m-%d %H:%M:%S", &time::now()).unwrap(),
+                        now.format("%Y-%m-%d %H:%M:%S").to_string(),
                         record.level().to_string(),
                         record.module_path().unwrap_or_default(),
                         record.args(),

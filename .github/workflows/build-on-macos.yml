@@ -1,6 +1,12 @@
 name: "Build On macOS"
 
-on: [push]
+on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
+  push:
+    branches: # Array of patterns that match refs/heads
+      - master # Push events on master branch
+      - dev
+    tags:
+      - "*"
 
 jobs:
   build: # job id, can be any string
@@ -21,8 +27,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
       - name: Build
+        shell: bash
         run: |
           env PKG_CONFIG_ALL_STATIC=1 cargo build --release --verbose --target ${{ matrix.target }}
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          cp -rf etc tools "target/${{ matrix.target }}/release"/ ;
+          cd "target/${{ matrix.target }}/release/";
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cd ../../..;
+          mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
       - name: Run tests
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}

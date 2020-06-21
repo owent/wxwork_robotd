@@ -9,6 +9,8 @@ static GLOBAL: System = System;
 #[macro_use]
 extern crate clap;
 extern crate actix_web;
+#[macro_use]
+extern crate actix_rt;
 extern crate futures;
 #[macro_use]
 extern crate log;
@@ -17,7 +19,7 @@ extern crate handlebars;
 extern crate hex;
 extern crate quick_xml;
 extern crate serde;
-extern crate time;
+extern crate chrono;
 #[macro_use]
 extern crate serde_json;
 extern crate openssl;
@@ -26,14 +28,14 @@ extern crate regex;
 extern crate lazy_static;
 extern crate byteorder;
 extern crate tokio;
-extern crate tokio_process;
 
 // #[macro_use]
 // extern crate json;
 
 // import packages
 // use std::sync::Arc;
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer, Route};
+use std::io;
 use std::net::TcpListener;
 use std::process;
 
@@ -42,7 +44,8 @@ mod handles;
 mod logger;
 mod wxwork_robot;
 
-fn main() {
+#[actix_rt::main]
+async fn main() -> io::Result<()> {
     let mut app_env = app::app();
     if app_env.debug {
         if let Err(e) = logger::init_with_level(
@@ -52,18 +55,18 @@ fn main() {
             app_env.log_rotate_size,
         ) {
             eprintln!("Setup debug log failed: {:?}.", e);
-            return;
+            return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
         }
     } else {
         if let Err(e) = logger::init(app_env.log, app_env.log_rotate, app_env.log_rotate_size) {
             eprintln!("Setup log failed: {:?}.", e);
-            return;
+            return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
         }
     }
 
     if !app_env.reload() {
         eprintln!("Load configure {} failed.", app_env.configure);
-        return;
+        return Err(std::io::Error::from(std::io::ErrorKind::InvalidInput));
     }
 
     let run_info = app_env.text_info();
@@ -79,15 +82,13 @@ fn main() {
             .service(
                 web::resource(format!("{}", app_env.prefix).as_str())
                     .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
-                    .to_async(move |req| {
-                        handles::default::dispatch_default_index(reg_move_default, req)
-                    }),
+                    .to(move |req| handles::default::dispatch_default_index(reg_move_default, req)),
             )
             // ====== register for project ======
             .service(
                 web::resource(format!("{}{{project}}/", app_env.prefix).as_str())
                     .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
-                    .to_async(move |req, body| {
+                    .to(move |req, body| {
                         handles::robot::dispatch_robot_request(reg_move_robot, req, body)
                     }),
             )
@@ -136,7 +137,7 @@ fn main() {
                     "Bind address {} success but listen failed and ignore this address: {}",
                     host, e
                 );
-                process::exit(1);
+                return Err(e);
             }
         };
 
@@ -145,13 +146,15 @@ fn main() {
     }
 
     if listened_count == 0 {
-        return;
+        return Ok(());
     }
 
     info!("{}", run_info);
-    if let Err(e) = server.run() {
+    let ret = server.run().await;
+    if let Err(ref e) = ret {
         eprintln!("Start robotd service failed: {}", e);
         error!("Start robotd service failed: {}", e);
-        process::exit(1);
     }
+
+    ret
 }

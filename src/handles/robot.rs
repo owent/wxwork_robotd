@@ -3,7 +3,7 @@ use futures::future::{ok as future_ok, Future};
 use serde::Deserialize;
 use std::sync::Arc;
 
-use super::{AppEnvironment, HttpResponseFuture};
+use super::AppEnvironment;
 use wxwork_robot::command_runtime;
 use wxwork_robot::message;
 
@@ -33,15 +33,15 @@ pub fn get_robot_project_name(_app: &AppEnvironment, req: &HttpRequest) -> Optio
     project
 }
 
-fn make_robot_error_response_future(msg: &str) -> HttpResponseFuture {
-    Box::new(future_ok(message::make_robot_error_response_content(msg)))
+fn make_robot_error_response_future(msg: &str) -> HttpResponse {
+    message::make_robot_error_response_content(msg)
 }
 
-pub fn dispatch_robot_request(
+pub async fn dispatch_robot_request(
     app: AppEnvironment,
     req: HttpRequest,
     body: web::Bytes,
-) -> HttpResponseFuture {
+) -> HttpResponse {
     let project_name = if let Some(x) = get_robot_project_name(&app, &req) {
         x
     } else {

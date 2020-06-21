@@ -1,6 +1,12 @@
 name: "Build On Linux"
 
-on: [push]
+on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
+  push:
+    branches: # Array of patterns that match refs/heads
+      - master # Push events on master branch
+      - dev
+    tags:
+      - "*"
 
 jobs:
   build: # job id, can be any string
@@ -54,8 +60,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
       - name: Build
+        shell: bash
         run: |
-          if [ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]; then
+          if [[] "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
             rustup target add ${{ matrix.target }} ;
             rustup toolchain install stable-${{ matrix.target }} ;
             env PKG_CONFIG_ALL_STATIC=1 cargo build --release --verbose --target ${{ matrix.target }} ;
@@ -64,6 +71,36 @@ jobs:
             cargo install cross --force ;
             cross build --target ${{ matrix.target }} --release --verbose ;
           fi
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          cp -rf etc tools "target/${{ matrix.target }}/release"/ ;
+          cd "target/${{ matrix.target }}/release/";
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cp -f ../../../Dockerfile ./;
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" != "x$GITHUB_EVENT_NAME" ]]; then
+            TAG_NAME=${GITHUB_REF//*\/};
+            echo "Trigger by tag -> $TAG_NAME";
+            which docker || true;
+            # echo "$DOCKER_TOKEN" | docker login -u "owt5008137" --password-stdin docker.io
+            # docker build --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest .
+            # docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+            # docker push docker.io/owt5008137/wxwork_robotd:latest
+            # docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+          else
+            echo "Trigger by $GITHUB_EVENT_NAME -> $GITHUB_REF";
+          fi
+          cd ../../..;
+          mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
       - name: Run tests
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |

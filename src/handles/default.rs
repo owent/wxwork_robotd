@@ -1,9 +1,9 @@
 use actix_web::{HttpRequest, HttpResponse};
-use futures::future::{ok as future_ok};
+use futures::future::ok as future_ok;
 
-use super::{AppEnvironment, HttpResponseFuture};
+use super::AppEnvironment;
 
-pub fn dispatch_default_index(app: AppEnvironment, _: HttpRequest) -> HttpResponseFuture {
+pub async fn dispatch_default_index(app: AppEnvironment, _: HttpRequest) -> HttpResponse {
         let output = format!(
                 "<!DOCTYPE html>
 <html><head>
@@ -18,27 +18,7 @@ table th, table td {{ border: 1px solid black; padding: 0.5rem; }}
                 app.html_info()
         );
 
-        Box::new(future_ok(HttpResponse::Forbidden()
+        HttpResponse::Forbidden()
                 .content_type("text/html")
-                .body(output)))
+                .body(output)
 }
-
-// impl<'r, S> FnOnce<(&'r HttpRequest,)> for AppDispatchDefault {
-//     type Output = HttpResponseFuture;
-//     extern "rust-call" fn call_once(self, args: (&'r HttpRequest,)) -> Self::Output {
-//         self.handle(args.0)
-//     }
-// }
-//
-// impl<'r, S> FnMut<(&'r HttpRequest,)> for AppDispatchDefault {
-//     extern "rust-call" fn call_mut(&mut self, args: (&'r HttpRequest,)) -> HttpResponseFuture {
-//         self.handle(args.0)
-//     }
-// }
-//
-// impl<'r, S> Fn<(&'r HttpRequest,)> for AppDispatchDefault {
-//     extern "rust-call" fn call(&self, args: (&'r HttpRequest,)) -> HttpResponseFuture {
-//         self.handle(args.0)
-//     }
-// }
-//

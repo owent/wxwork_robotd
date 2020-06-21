@@ -235,7 +235,7 @@ script:
 
     fi
 
-    tar -zcvf $TARGET.tar.gz etc bin;
+    tar -zcvf $TARGET.tar.gz etc bin tools;
 
     cp -f ../../../Dockerfile ./;
     if [ "$TARGET" == "x86_64-unknown-linux-musl" ] && [ "x" != "x$TRAVIS_TAG" ]; then

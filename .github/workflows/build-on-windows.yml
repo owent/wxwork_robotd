@@ -1,6 +1,12 @@
 name: "Build On Windows"
 
-on: [push]
+on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
+  push:
+    branches: # Array of patterns that match refs/heads
+      - master # Push events on master branch
+      - dev
+    tags:
+      - "*"
 
 jobs:
   build: # job id, can be any string
@@ -11,8 +17,7 @@ jobs:
       matrix:
         os: [windows-latest]
         rust: [stable]
-        target:
-          [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
     # x86_64-pc-windows-gnu, i686-pc-windows-gnu, # Github Action has no openssl on mingw32
     runs-on: ${{ matrix.os }}
     env:
@@ -27,20 +32,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
       - name: Install OpenSSL
-        shell: bash
+        shell: pwsh
         run: |
-          if [ "${{ matrix.target }}" == "i686-pc-windows-msvc" ] || [ "${{ matrix.target }}" == "i686-pc-windows-gnu" ]; then
+          if ("${{ matrix.target }}" -eq "i686-pc-windows-msvc" -or "${{ matrix.target }}" -eq "i686-pc-windows-gnu") { 
             vcpkg install openssl --triplet x86-windows
-            vcpkg install openssl --triplet x86-windows-static
-          else
+            vcpkg install openssl --triplet x86-windows-static-md
+          } else {
             vcpkg install openssl --triplet x64-windows
-            vcpkg install openssl --triplet x64-windows-static
-          fi
+            vcpkg install openssl --triplet x64-windows-static-md
+          }
       - name: Build
-        shell: bash
+        shell: pwsh
         run: |
-          env VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT cargo build --release --verbose --target ${{ matrix.target }}
+          $ENV:VCPKG_ROOT=$ENV:VCPKG_INSTALLATION_ROOT
+          cargo build --release --verbose --target ${{ matrix.target }}
+          Copy-Item -Force -Recurse etc "./target/${{ matrix.target }}/release/"
+          Copy-Item -Force -Recurse tools "./target/${{ matrix.target }}/release/"
+          cd "./target/${{ matrix.target }}/release/"
+          mkdir bin
+          Copy-Item -Force wxwork_robotd.exe bin/
+          if ( Test-Path "${{ matrix.target }}.zip" ) { Remove-Item -Force "${{ matrix.target }}.zip" }
+          Compress-Archive -DestinationPath "${{ matrix.target }}.zip" -Path etc,bin,tools
+          Get-ChildItem
+          Get-ChildItem -Recurse etc,bin,tools
+          Copy-Item -Force "${{ matrix.target }}.zip" ../../../
+          cd ../../../
       - name: Run tests
-        shell: bash
+        shell: pwsh
         run: |
-          env VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT cargo test --release --verbose --target ${{ matrix.target }}
+          $ENV:VCPKG_ROOT=$ENV:VCPKG_INSTALLATION_ROOT
+          cargo test --release --verbose --target ${{ matrix.target }}
