@@ -9,9 +9,9 @@ use std::process;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use wxwork_robot;
-use wxwork_robot::command::{WXWorkCommandList, WXWorkCommandMatch, WXWorkCommandPtr};
-use wxwork_robot::project::WXWorkProject;
+use super::wxwork_robot::command::{WXWorkCommandList, WXWorkCommandMatch, WXWorkCommandPtr};
+use super::wxwork_robot::project::WXWorkProject;
+use super::wxwork_robot::{build_project_set_shared, WXWorkProjectSet, WXWorkProjectSetShared};
 
 #[derive(Debug, Clone)]
 pub struct AppConfigure {
@@ -50,7 +50,7 @@ struct AppEnvironmentInfo {
     pub log_rotate: i32,
     pub log_rotate_size: usize,
     pub pid_file: Option<String>,
-    pub projects: Option<wxwork_robot::WXWorkProjectSetShared>,
+    pub projects: Option<WXWorkProjectSetShared>,
     pub conf: AppConfigure,
 }
 
@@ -386,8 +386,8 @@ impl AppEnvironment {
         ret
     }
 
-    pub fn get_projects(&self) -> Option<wxwork_robot::WXWorkProjectSetShared> {
-        let ret: Option<wxwork_robot::WXWorkProjectSetShared>;
+    pub fn get_projects(&self) -> Option<WXWorkProjectSetShared> {
+        let ret: Option<WXWorkProjectSetShared>;
         unsafe {
             ret = if let Some(ref x) = APP_ENV_INFO_STORE.projects {
                 Some(x.clone())
@@ -399,10 +399,10 @@ impl AppEnvironment {
         ret
     }
 
-    pub fn set_projects(&self, val: wxwork_robot::WXWorkProjectSetShared) {
+    pub fn set_projects(&self, val: WXWorkProjectSetShared) {
         {
             if let Ok(x) = val.lock() {
-                let ref_x: &wxwork_robot::WXWorkProjectSet = &*x;
+                let ref_x: &WXWorkProjectSet = &*x;
                 for (k, _) in ref_x.projs.iter() {
                     info!("load project \"{}\" success", k);
                 }
@@ -483,7 +483,7 @@ impl AppEnvironment {
                 if let Ok(conf) = serde_json::from_reader(f) {
                     let conf_json: serde_json::Value = conf;
                     self.reload_app_conf(&conf_json);
-                    if let Some(x) = wxwork_robot::build_project_set_shared(&conf_json) {
+                    if let Some(x) = build_project_set_shared(&conf_json) {
                         self.set_projects(x);
                     } else {
                         error!(

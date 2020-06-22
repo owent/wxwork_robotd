@@ -8,18 +8,17 @@ static GLOBAL: System = System;
 // crates
 #[macro_use]
 extern crate clap;
-extern crate actix_web;
-#[macro_use]
 extern crate actix_rt;
+extern crate actix_web;
 extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate bytes;
+extern crate chrono;
 extern crate handlebars;
 extern crate hex;
 extern crate quick_xml;
 extern crate serde;
-extern crate chrono;
 #[macro_use]
 extern crate serde_json;
 extern crate openssl;
@@ -34,15 +33,14 @@ extern crate tokio;
 
 // import packages
 // use std::sync::Arc;
-use actix_web::{middleware::Logger, web, App, HttpServer, Route};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use std::io;
 use std::net::TcpListener;
-use std::process;
 
-mod app;
-mod handles;
-mod logger;
-mod wxwork_robot;
+pub mod app;
+pub mod handles;
+pub mod logger;
+pub mod wxwork_robot;
 
 #[actix_rt::main]
 async fn main() -> io::Result<()> {

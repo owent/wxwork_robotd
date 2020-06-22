@@ -1,7 +1,6 @@
 use actix_web::{HttpRequest, HttpResponse};
-use futures::future::ok as future_ok;
 
-use super::AppEnvironment;
+use super::super::app::AppEnvironment;
 
 pub async fn dispatch_default_index(app: AppEnvironment, _: HttpRequest) -> HttpResponse {
         let output = format!(
