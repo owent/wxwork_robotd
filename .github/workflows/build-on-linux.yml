@@ -62,7 +62,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          if [[] "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
             rustup target add ${{ matrix.target }} ;
             rustup toolchain install stable-${{ matrix.target }} ;
             env PKG_CONFIG_ALL_STATIC=1 cargo build --release --verbose --target ${{ matrix.target }} ;
