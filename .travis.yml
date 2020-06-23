@@ -178,75 +178,49 @@ before_install:
 #
 #    fi
 
-script:
-  - if [[ $USING_SYSTEM_ALLOC -eq 0 ]]; then
-
+script: |
+  if [[ $USING_SYSTEM_ALLOC -eq 0 ]]; then
     BUILD_WITH_SYSTEM_ALLOC="";
-
     else
-
     BUILD_WITH_SYSTEM_ALLOC=" --features system-alloc";
+  fi
 
-    fi
-  - if [[ $USING_CROSS -ne 0 ]]; then
-
+  if [[ $USING_CROSS -ne 0 ]]; then
     cross build --target $TARGET --release $BUILD_WITH_SYSTEM_ALLOC ;
-
-    else
-
+  else
     cargo build --release --target $TARGET $BUILD_WITH_SYSTEM_ALLOC ;
+  fi
 
-    fi
-
-    if [[ -e "target/$TARGET/release/etc" ]]; then
-
+  if [[ -e "target/$TARGET/release/etc" ]]; then
     rm -rf "target/$TARGET/release/etc";
+  fi
 
-    fi
-
-    if [[ -e "target/$TARGET/release/tools" ]]; then
-
+  if [[ -e "target/$TARGET/release/tools" ]]; then
     rm -rf "target/$TARGET/release/tools";
+  fi
 
-    fi
+  cp -rf etc tools "target/$TARGET/release"/ ;
+  cd "target/$TARGET/release/";
+  mkdir -p bin;
 
-    cp -rf etc tools "target/$TARGET/release"/ ;
-
-    cd "target/$TARGET/release/";
-
-    mkdir -p bin;
-
-    if [[ -e wxwork_robotd ]]; then
-
+  if [[ -e wxwork_robotd ]]; then
     cp -f wxwork_robotd bin/wxwork_robotd;
-
-    else
-
+  else
     cp -f wxwork_robotd* bin/;
+  fi
 
-    fi
-
-    tar -zcvf $TARGET.tar.gz etc bin tools;
-
-    cp -f ../../../Dockerfile ./;
-
-    if [[ "$TARGET" == "x86_64-unknown-linux-musl" ]] && [[ "x" != "x$TRAVIS_TAG" ]]; then
-
+  tar -zcvf $TARGET.tar.gz etc bin tools;
+  cp -f ../../../Dockerfile ./;
+  if [[ "$TARGET" == "x86_64-unknown-linux-musl" ]] && [[ "x" != "x$TRAVIS_TAG" ]]; then
     echo "$DOCKER_TOKEN" | docker login -u "owt5008137" --password-stdin docker.io
-
     docker build --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest .
-
     docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TRAVIS_TAG
-
     docker push docker.io/owt5008137/wxwork_robotd:latest
-
     docker push docker.io/owt5008137/wxwork_robotd:$TRAVIS_TAG
+  fi
 
-    fi
-
-    cd ../../..;
-
-    mv -f "target/$TARGET/release/$TARGET.tar.gz" ./;
+  cd ../../..;
+  mv -f "target/$TARGET/release/$TARGET.tar.gz" ./;
 
 cache: cargo
 
