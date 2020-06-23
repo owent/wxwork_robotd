@@ -17,8 +17,8 @@ jobs:
       matrix:
         os: [windows-latest]
         rust: [stable]
-        target:
-          [x86_64-pc-windows-msvc, i686-pc-windows-msvc, x86_64-pc-windows-gnu]
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
+    #, x86_64-pc-windows-gnu
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup Rust

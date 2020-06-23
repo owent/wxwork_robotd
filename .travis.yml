@@ -229,12 +229,19 @@ script:
     tar -zcvf $TARGET.tar.gz etc bin tools;
 
     cp -f ../../../Dockerfile ./;
-    if [ "$TARGET" == "x86_64-unknown-linux-musl" ] && [ "x" != "x$TRAVIS_TAG" ]; then
+
+    if [[ "$TARGET" == "x86_64-unknown-linux-musl" ]] && [[ "x" != "x$TRAVIS_TAG" ]]; then
+
     echo "$DOCKER_TOKEN" | docker login -u "owt5008137" --password-stdin docker.io
+
     docker build --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest .
+
     docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TRAVIS_TAG
+
     docker push docker.io/owt5008137/wxwork_robotd:latest
+
     docker push docker.io/owt5008137/wxwork_robotd:$TRAVIS_TAG
+
     fi
 
     cd ../../..;

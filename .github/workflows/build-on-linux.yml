@@ -17,8 +17,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         rust: [stable]
-        target:
-          [
+        target: [
             aarch64-unknown-linux-gnu,
             arm-unknown-linux-gnueabi,
             armv7-unknown-linux-gnueabihf,
@@ -27,9 +26,9 @@ jobs:
             mipsel-unknown-linux-gnu,
             mips64-unknown-linux-gnuabi64,
             mips64el-unknown-linux-gnuabi64,
-            powerpc-unknown-linux-gnu,
-            powerpc64-unknown-linux-gnu,
-            powerpc64le-unknown-linux-gnu,
+            #powerpc-unknown-linux-gnu,
+            #powerpc64-unknown-linux-gnu,
+            #powerpc64le-unknown-linux-gnu,
             x86_64-unknown-linux-gnu,
             aarch64-unknown-linux-musl,
             arm-unknown-linux-musleabihf,
