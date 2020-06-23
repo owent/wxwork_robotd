@@ -543,7 +543,7 @@ pub fn pack_text_message(msg: WXWorkMessageTextRsp) -> Result<String, String> {
 
     if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
         if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgType"))) {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str("text")));
+            let _ = writer.write_event(Event::Text(BytesText::from_plain_str("text")));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
         }
 
@@ -603,7 +603,7 @@ pub fn pack_markdown_message(msg: WXWorkMessageMarkdownRsp) -> Result<String, St
 
     if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
         if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgType"))) {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str("markdown")));
+            let _ = writer.write_event(Event::Text(BytesText::from_plain_str("markdown")));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
         }
 

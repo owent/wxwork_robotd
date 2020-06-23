@@ -298,3 +298,90 @@ async fn dispatch_robot_message(
 
     command_runtime::run(runtime).await
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::super::super::wxwork_robot::base64;
+    use super::super::super::wxwork_robot::message;
+    use super::super::super::wxwork_robot::project::WXWorkProject;
+
+    const WXWORKROBOT_TEST_MSG_ORIGIN: &[u8] = b"<xml><Encrypt><![CDATA[FwydeYOgYQZ9k+kVyzxq0dnB4a/Pwn3MefyybYcZbsRJho83qzw1/UCX/5jlBxDxiPPOY1ai/f7x+dorMGFNweLsJxNiWT27Ov3eOWLuJrNmbDWt27KwnIeT4tgA5uzDVIZd8jF6i7GUD+kK2VuZe+wHu8TsCTDOngMJJ9bnDjzdCtgpgklm3jSgF4A+VViq2mPcEOcHfWsYOcjJLiiGggLI1xIIZqag/o8xw4HFi+O9R8E3wbWtnMyHSih+oW3ES+tHdv0nnYx6JqvTPMMZIQiNMx9AVyDn4ps88bEppHUw+Cda5/Uk6EwMGPCr/AMdBVFTtJow+CUyoO4T6g821v7hwivkxPEMsOUz6cSir4M5W7lRXkSTcyHuadr1V7fjR7luVLqA4sR6JTQEUBkude7kn1GX9JdJkddqqgZInX4hBXIPJ4h5UmJLxWUADrH8sPIpu32shvFEmzEcftcobgDIxBj9vhXBn9MfaiOYGMAAfQ3TZ0Cb9HmDW/hnA2RY1bHTf+UK7dSK+DyaVwgsmGfZsRhfpShCAvuRnOKUx1JWRDwEHyv5VxdCozPoOk4fjyLVB4HHigyd/jfuc3CYqGtJ+Gn0aKc8zqVgTHgS9q3LkfcalcFJ2pVGCRYGW8mTyTcjW627RhzYWN5qmzbFQzRHMBh8Z/9zdSmW+VxNOHfNZaLR5TPfITSDKeHH1NrISm06Xf3wjyRpUvt6t6BAsFfPJid44XjRgWk2tlmoTo7yDT24uZWWOIuczWsicXbMOWJjkJ3dSKopyfewF61MHcTHp8M3KcbAL1/48kP5vM2Gqp6WBrkAgJu17BJYqRn2yopNmCZdY5H4Hdfl9Eq+/MEUZsZS8NBVAkVgjYlP4p1eWKJFiKQohQWVAEgGWWVBED+52QrKZqmXgdVfQ3UzuHHheNrBf5y94b1wlU3crBh/Gpi1yYOd7UReYnmo4uOth1sSwcqQO1Fe+lUkW3JCbw==]]></Encrypt></xml>";
+    const WXWORKROBOT_TEST_MSG_REPLY: &str = "<xml><MsgType><![CDATA[markdown]]></MsgType><Markdown><Content><![CDATA[啦啦啦热热热]]></Content></Markdown></xml>";
+
+    #[test]
+    fn project_decode_and_verify() {
+        let encrypt_msg_b64_res =
+            message::get_msg_encrypt_from_bytes(bytes::Bytes::from(WXWORKROBOT_TEST_MSG_ORIGIN));
+        assert!(encrypt_msg_b64_res.is_some());
+
+        let json_value = serde_json::from_str("{ \"name\": \"test_proj\", \"token\": \"hJqcu3uJ9Tn2gXPmxx2w9kkCkCE2EPYo\", \"encodingAESKey\": \"6qkdMrq68nTKduznJYO1A37W2oEgpkMUvkttRToqhUt\", \"cmds\": {} }").unwrap();
+        let proj_obj_res = WXWorkProject::new(&json_value);
+        assert!(proj_obj_res.is_some());
+        if !proj_obj_res.is_some() {
+            return;
+        }
+        let proj_obj = proj_obj_res.unwrap();
+
+        let msg_dec: message::WXWorkMessageDec;
+        if let Some(encrypt_msg_b64) = encrypt_msg_b64_res {
+            assert!(proj_obj.check_msg_signature(
+                "8fa1a2c27ee20431b1f781600d0af971db3cc12b",
+                "1592905675",
+                "da455e270d961d94",
+                encrypt_msg_b64.as_str()
+            ));
+
+            let msg_dec_res = proj_obj.decrypt_msg_raw_base64_content(encrypt_msg_b64.as_str());
+            assert!(msg_dec_res.is_ok());
+            msg_dec = if let Ok(x) = msg_dec_res {
+                x
+            } else {
+                return;
+            };
+        } else {
+            return;
+        }
+
+        // 提取数据
+        let msg_ntf_res = message::get_msg_from_str(msg_dec.content.as_str());
+        assert!(msg_ntf_res.is_some());
+        let msg_ntf = if let Some(x) = msg_ntf_res {
+            x
+        } else {
+            return;
+        };
+
+        assert_eq!(msg_ntf.content, "@测试机器人 说啦啦啦热热热");
+    }
+
+    #[test]
+    fn project_encode_reply() {
+        let json_value = serde_json::from_str("{ \"name\": \"test_proj\", \"token\": \"hJqcu3uJ9Tn2gXPmxx2w9kkCkCE2EPYo\", \"encodingAESKey\": \"6qkdMrq68nTKduznJYO1A37W2oEgpkMUvkttRToqhUt\", \"cmds\": {} }").unwrap();
+        let proj_obj_res = WXWorkProject::new(&json_value);
+        assert!(proj_obj_res.is_some());
+        if !proj_obj_res.is_some() {
+            return;
+        }
+        let proj_obj = proj_obj_res.unwrap();
+
+        let random_str = String::from("5377875643139089");
+        let encrypted_res =
+            proj_obj.encrypt_msg_raw(&WXWORKROBOT_TEST_MSG_REPLY.as_bytes(), &random_str);
+        assert!(encrypted_res.is_ok());
+
+        let encrypted_base64 = if let Ok(x) = encrypted_res {
+            match base64::STANDARD.encode(&x) {
+                Ok(v) => v,
+                Err(_) => {
+                    assert!(false);
+                    return;
+                }
+            }
+        } else {
+            return;
+        };
+
+        assert_eq!(encrypted_base64, "i84WNcyej8+Vo0tCZHLxCWt3ObZ2mvzs0cIGXLleX43mjd+TK1SYqdUOuPMS32ZJK0QyAq+Y6eVwqObEjrLTxGnlEeMOH2/f1CMxcPiRXUOTzOP4/qyeYI+PF9wAuJIajfJMHZCUiUSjS5cs18AS3XnO3VoP1hnGkMkxNy3CBFqQzgVkGsHhz3cQK94tzlkPWsveB8qQZjOJWxHst2Y+8Q==");
+    }
+}

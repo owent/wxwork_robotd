@@ -1,7 +1,7 @@
 use actix_web::HttpResponse;
 use aes::Aes256;
 // use block_cipher::{BlockCipher, NewBlockCipher};
-use block_modes::block_padding::Pkcs7;
+use block_modes::block_padding::NoPadding;
 use block_modes::{BlockMode, Cbc};
 use byteorder::{BigEndian, ByteOrder};
 // use openssl::symm::{Cipher, Crypter, Mode};
@@ -18,11 +18,11 @@ use std::time::SystemTime;
 
 use super::{base64, command, message};
 
-type Aes256CbcPkcs7 = Cbc<Aes256, Pkcs7>;
+type Aes256CbcNoPadding = Cbc<Aes256, NoPadding>;
 
 // #[derive(Clone)]
 struct WXWorkProjectCipherInfo {
-    pub cipher: Aes256CbcPkcs7,
+    pub cipher: Aes256CbcNoPadding,
     pub key: Vec<u8>,
     pub iv: Vec<u8>,
 }
@@ -200,14 +200,14 @@ impl WXWorkProject {
         //let cipher_iv_len = <Aes256 as BlockCipher>::BlockSize::to_usize();
         //let cipher_iv_len = U16::to_usize();
         // According to https://en.wikipedia.org/wiki/Block_size_(cryptography)
-        // Block size of AES is always 128bits
+        // Block size of AES is always 128bits/16bytes
         let cipher_iv_len: usize = 16;
         let cipher_iv = if aes_key_bin.len() >= cipher_iv_len {
             Vec::from(&aes_key_bin[0..cipher_iv_len])
         } else {
             Vec::new()
         };
-        let cipher_ctx = match Aes256CbcPkcs7::new_var(&aes_key_bin, &cipher_iv) {
+        let cipher_ctx = match Aes256CbcNoPadding::new_var(&aes_key_bin, &cipher_iv) {
             Ok(x) => x,
             Err(e) => {
                 let err_msg = format!(
@@ -363,7 +363,7 @@ impl WXWorkProject {
         match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                decrypter = match Aes256CbcPkcs7::new_var(&ci.key, &ci.iv) {
+                decrypter = match Aes256CbcNoPadding::new_var(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
@@ -463,7 +463,7 @@ impl WXWorkProject {
         &self,
         input: &str,
     ) -> Result<message::WXWorkMessageDec, String> {
-        let dec_bin_unpadding = match self.decrypt_msg_raw_base64(input) {
+        let dec_bin = match self.decrypt_msg_raw_base64(input) {
             Ok(x) => x,
             Err(e) => {
                 return Err(e);
@@ -475,7 +475,7 @@ impl WXWorkProject {
             self.name(),
             input
         );
-        // let dec_bin_unpadding = self.pkcs7_decode(&dec_bin);
+        let dec_bin_unpadding = self.pkcs7_decode(&dec_bin);
 
         if dec_bin_unpadding.len() <= 20 {
             let err_msg = format!(
@@ -544,7 +544,7 @@ impl WXWorkProject {
         })
     }
 
-    pub fn encrypt_msg_raw(&self, input: &[u8]) -> Result<Vec<u8>, String> {
+    pub fn encrypt_msg_raw(&self, input: &[u8], random_str: &String) -> Result<Vec<u8>, String> {
         // rand_msg=AES_Decrypt(aes_msg)
         // 去掉rand_msg头部的16个随机字节和4个字节的msg_len，截取msg_len长度的部分即为msg，剩下的为尾部的receiveid
         // 网络字节序,回包的receiveid直接为空即可
@@ -554,11 +554,11 @@ impl WXWorkProject {
 
         let mut padded_plaintext: Vec<u8> = Vec::new();
         padded_plaintext.reserve(64 + input.len());
-        padded_plaintext.extend_from_slice(self.alloc_random_str().as_bytes());
+        padded_plaintext.extend_from_slice(random_str.as_bytes());
         padded_plaintext.extend_from_slice(&input_len_buf);
         padded_plaintext.extend_from_slice(input);
 
-        // let padded_input = self.pkcs7_encode(&padded_plaintext);
+        let padded_input = self.pkcs7_encode(&padded_plaintext);
 
         let encrypter;
         // let block_size: usize;
@@ -566,7 +566,7 @@ impl WXWorkProject {
         match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                encrypter = match Aes256CbcPkcs7::new_var(&ci.key, &ci.iv) {
+                encrypter = match Aes256CbcNoPadding::new_var(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
@@ -609,7 +609,8 @@ impl WXWorkProject {
             }
         }
 
-        Ok(encrypter.encrypt_vec(&padded_plaintext))
+        let ret = encrypter.encrypt_vec(&padded_input);
+        Ok(ret)
 
         /*
         encrypter.pad(false);
@@ -649,9 +650,22 @@ impl WXWorkProject {
 
     pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {
         // msg_encrypt = Base64_Encode(AES_Encrypt(rand_msg))
-        match self.encrypt_msg_raw(&input) {
+        let random_str = self.alloc_random_str();
+        match self.encrypt_msg_raw(&input, &random_str) {
             Ok(x) => match base64::STANDARD.encode(&x) {
-                Ok(v) => Ok(v),
+                Ok(v) => {
+                    debug!(
+                        "project \"{}\" use random string {} and encrypt \"{}\" to {}",
+                        self.name(),
+                        random_str,
+                        match String::from_utf8(input.to_vec()) {
+                            Ok(y) => y,
+                            Err(_) => hex::encode(input),
+                        },
+                        v
+                    );
+                    Ok(v)
+                }
                 Err(e) => {
                     let ret = format!(
                         "project \"{}\" encrypt {} and encode to base64 failed, \n{:?}",
