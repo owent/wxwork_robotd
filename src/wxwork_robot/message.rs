@@ -1,5 +1,5 @@
 use actix_web::web;
-use openssl::hash;
+use md5::{Digest, Md5};
 
 // use hex;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
@@ -33,6 +33,7 @@ pub struct WXWorkMessageNtf {
     pub from: WXWorkMessageFrom,
     pub msg_type: String,
     pub content: String,
+    pub image_url: String,
     pub msg_id: String,
     pub chat_id: String,
     pub chat_type: String,
@@ -129,6 +130,7 @@ enum WXWorkMsgField {
     ActionName,
     ActionValue,
     ActionCallbackID,
+    ImageUrl,
 }
 
 pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
@@ -138,6 +140,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
     let mut from_alias = String::default();
     let mut msg_type = String::default();
     let mut content = String::default();
+    let mut image_url = String::default();
     let mut msg_id = String::default();
     let mut chat_id = String::default();
     let mut chat_type = String::default();
@@ -227,6 +230,10 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     b"Text" | b"Markdown" => {
                         field_mode = WXWorkMsgField::Content;
                         debug!("Parse get ready for Content");
+                    }
+                    b"ImageUrl" => {
+                        field_mode = WXWorkMsgField::ImageUrl;
+                        debug!("Parse get ready for ImageUrl");
                     }
                     b"MsgId" => {
                         field_mode = WXWorkMsgField::MsgId;
@@ -346,6 +353,12 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         debug!("Parse close for Content");
                     }
                 }
+                b"ImageUrl" => {
+                    if let WXWorkMsgField::ImageUrl = field_mode {
+                        field_mode = WXWorkMsgField::NONE;
+                        debug!("Parse close for ImageUrl");
+                    }
+                }
                 b"MsgId" => {
                     if let WXWorkMsgField::MsgId = field_mode {
                         field_mode = WXWorkMsgField::NONE;
@@ -429,6 +442,10 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         content = data_str;
                         debug!("Parse data for Content");
                     }
+                    WXWorkMsgField::ImageUrl => {
+                        image_url = data_str;
+                        debug!("Parse data for ImageUrl");
+                    }
                     WXWorkMsgField::MsgId => {
                         msg_id = data_str;
                         debug!("Parse data for MsgId");
@@ -493,6 +510,10 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         error!("We can not get robot key from {}", web_hook_url);
     }
 
+    if !image_url.is_empty() && !content.is_empty() {
+        msg_type = String::from("mixed");
+    }
+
     Some(WXWorkMessageNtf {
         web_hook_key: web_hook_key,
         web_hook_url: web_hook_url,
@@ -503,6 +524,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         },
         msg_type: msg_type,
         content: content,
+        image_url: image_url,
         msg_id: msg_id,
         chat_id: chat_id,
         chat_type: chat_type,
@@ -627,19 +649,15 @@ pub fn pack_image_message(msg: WXWorkMessageImageRsp) -> Result<String, String> 
                 let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Base64")));
             }
 
-            match hash::hash(hash::MessageDigest::md5(), &msg.content) {
-                Ok(x) => {
-                    if let Ok(_) =
-                        writer.write_event(Event::Start(BytesStart::borrowed_name(b"Md5")))
-                    {
-                        // BytesText::from_escaped_str
-                        let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
-                            hex::encode(x.as_ref()).as_str(),
-                        )));
-                        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Md5")));
-                    }
-                }
-                Err(e) => error!("Md5 for {} failed, {:?}", hex::encode(&msg.content), e),
+            let mut hasher = Md5::new();
+            hasher.update(&msg.content);
+
+            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Md5"))) {
+                // BytesText::from_escaped_str
+                let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
+                    hex::encode(hasher.finalize().as_slice()).as_str(),
+                )));
+                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Md5")));
             }
 
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Image")));

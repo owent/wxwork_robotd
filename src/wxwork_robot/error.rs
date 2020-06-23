@@ -1,5 +1,5 @@
 use actix_web;
-use openssl;
+use block_modes;
 
 use super::base64;
 
@@ -8,7 +8,7 @@ pub enum Error {
     StringErr(String),
     ActixWebErr(actix_web::Error),
     Base64Err(base64::DecodeError),
-    OpensslErr(openssl::error::ErrorStack),
+    CryptoErr(block_modes::BlockModeError),
 }
 
 impl From<Error> for actix_web::Error {
@@ -16,7 +16,7 @@ impl From<Error> for actix_web::Error {
         match e {
             Error::ActixWebErr(x) => x,
             Error::StringErr(x) => actix_web::error::ErrorForbidden(x),
-            Error::OpensslErr(x) => actix_web::error::ErrorForbidden(format!("{:?}", x)),
+            Error::CryptoErr(x) => actix_web::error::ErrorForbidden(format!("{:?}", x)),
             Error::Base64Err(x) => actix_web::error::ErrorForbidden(format!("{:?}", x)),
         }
     }

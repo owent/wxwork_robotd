@@ -18,11 +18,7 @@ jobs:
         os: [windows-latest]
         rust: [stable]
         target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
-    # x86_64-pc-windows-gnu, i686-pc-windows-gnu, # Github Action has no openssl on mingw32
     runs-on: ${{ matrix.os }}
-    env:
-      VCPKGRS_DYNAMIC: 1
-      OPENSSL_STATIC: 1
     steps:
       - name: Setup Rust
         uses: hecrj/setup-rust-action@v1
@@ -31,20 +27,9 @@ jobs:
           targets: ${{ matrix.target }}
       - name: Checkout
         uses: actions/checkout@v1
-      - name: Install OpenSSL
-        shell: pwsh
-        run: |
-          if ("${{ matrix.target }}" -eq "i686-pc-windows-msvc" -or "${{ matrix.target }}" -eq "i686-pc-windows-gnu") { 
-            vcpkg install openssl --triplet x86-windows
-            vcpkg install openssl --triplet x86-windows-static-md
-          } else {
-            vcpkg install openssl --triplet x64-windows
-            vcpkg install openssl --triplet x64-windows-static-md
-          }
       - name: Build
         shell: pwsh
         run: |
-          $ENV:VCPKG_ROOT=$ENV:VCPKG_INSTALLATION_ROOT
           cargo build --release --verbose --target ${{ matrix.target }}
           Copy-Item -Force -Recurse etc "./target/${{ matrix.target }}/release/"
           Copy-Item -Force -Recurse tools "./target/${{ matrix.target }}/release/"
@@ -60,5 +45,4 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
-          $ENV:VCPKG_ROOT=$ENV:VCPKG_INSTALLATION_ROOT
           cargo test --release --verbose --target ${{ matrix.target }}

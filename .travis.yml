@@ -11,9 +11,7 @@ env:
     - USING_CROSS=0
     - USING_TRUST=0
     - USING_SYSTEM_ALLOC=0
-    - PKG_CONFIG_ALL_STATIC=1
     - CROSS_DOCKER_IN_DOCKER=true
-    - PKG_CONFIG_ALLOW_CROSS=1
 
 matrix:
   include:
@@ -205,7 +203,7 @@ script:
 
     else
 
-    env PKG_CONFIG_ALL_STATIC=1 cargo build --release --target $TARGET $BUILD_WITH_SYSTEM_ALLOC ;
+    cargo build --release --target $TARGET $BUILD_WITH_SYSTEM_ALLOC ;
 
     fi
 

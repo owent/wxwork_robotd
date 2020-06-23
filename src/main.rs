@@ -21,8 +21,12 @@ extern crate quick_xml;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
-extern crate openssl;
+extern crate aes;
+extern crate block_cipher;
+extern crate block_modes;
+extern crate md5;
 extern crate regex;
+extern crate ring;
 #[macro_use]
 extern crate lazy_static;
 extern crate byteorder;

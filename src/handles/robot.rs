@@ -265,6 +265,8 @@ async fn dispatch_robot_message(
         serde_json::Value::String(msg_ntf.from.alias.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_MSG_ID"] =
         serde_json::Value::String(msg_ntf.msg_id.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_IMAGE_URL"] =
+        serde_json::Value::String(msg_ntf.image_url.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_GET_CHAT_INFO_URL"] =
         serde_json::Value::String(msg_ntf.get_chat_info_url.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_CHAT_ID"] =

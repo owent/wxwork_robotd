@@ -29,7 +29,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          env PKG_CONFIG_ALL_STATIC=1 cargo build --release --verbose --target ${{ matrix.target }}
+          cargo build --release --verbose --target ${{ matrix.target }}
           if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
             rm -rf "target/${{ matrix.target }}/release/etc";
           fi

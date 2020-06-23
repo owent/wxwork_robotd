@@ -63,6 +63,7 @@
   * WXWORK_ROBOT_MSG_FROM_NAME              : 发消息者的用户名称(版本>=0.3.6)
   * WXWORK_ROBOT_MSG_FROM_ALIAS             : 发消息者的用户别名(版本>=0.3.6)
   * WXWORK_ROBOT_MSG_ID                     : 消息ID(版本>=0.3.6)
+  * WXWORK_ROBOT_IMAGE_URL                  : 如果是图文混排和图片消息，这个指向消息内的图片地址(版本>=0.8.0)
   * WXWORK_ROBOT_GET_CHAT_INFO_URL          : 可以用于获取消息信息的URL(版本>=0.3.9)，有效期为5分钟，调用一次后失效
   * WXWORK_ROBOT_CHAT_ID                    : chat id(版本>=0.3.9)，用于区分聊天群，如果机器人被添加到多个群，可以用这个指定主动发消息到哪个群
   * WXWORK_ROBOT_CHAT_TYPE                  : chat type(版本>=0.6.1)，对应企业微信机器人消息的ChatType字段（会话类型，single/group，分别表示：单聊\群聊话）
@@ -198,10 +199,7 @@
 3. 安装一个编译目标（默认也会安装一个的） ```rustup target install <目标架构>```
     > 可以通过 ```rustup target list``` 来查看支持的架构
 4. 克隆仓库并进入主目录
-5. 如果是Windows环境，需要准备openssl开发包，并通过环境变量 ```OPENSSL_DIR``` 来指定安装包。(其他环境可略过这步)
-    > + 可以从 http://slproweb.com/products/Win32OpenSSL.html 下载预编译包，必须用完整版，不能用Light版本。然后设置环境变量 ```X86_64_PC_WINDOWS_MSVC_OPENSSL_DIR=C:/Program Files/OpenSSL-Win64``` (请替换成你的安装目录)
-    > + 或者使用 [vcpkg][3] 来安装（需要设置环境变量: ```VCPKG_ROOT=vcpkg仓库目录``` , ```VCPKGRS_DYNAMIC=1```）。[vcpkg][3]得安装方法请参考[官方文档][3]。
-6. 运行编译命令: ```cargo build```
+5. 运行编译命令: ```cargo build```
 
 更多详情见： https://rustup.rs/ 
 
@@ -211,4 +209,3 @@
 
 [1]: https://crates.io/crates/handlebars
 [2]: https://docs.rs/regex/
-[3]: https://github.com/Microsoft/vcpkg

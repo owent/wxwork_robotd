@@ -1,8 +1,12 @@
-use openssl::symm::{Cipher, Crypter, Mode};
-//use openssl::hash::{Hasher, MessageDigest};
 use actix_web::HttpResponse;
+use aes::Aes256;
+// use block_cipher::{BlockCipher, NewBlockCipher};
+use block_modes::block_padding::Pkcs7;
+use block_modes::{BlockMode, Cbc};
 use byteorder::{BigEndian, ByteOrder};
-use openssl::hash;
+// use openssl::symm::{Cipher, Crypter, Mode};
+use ring;
+use ring::rand::SecureRandom;
 
 use serde_json;
 use std::collections::HashMap;
@@ -14,9 +18,11 @@ use std::time::SystemTime;
 
 use super::{base64, command, message};
 
-#[derive(Clone)]
+type Aes256CbcPkcs7 = Cbc<Aes256, Pkcs7>;
+
+// #[derive(Clone)]
 struct WXWorkProjectCipherInfo {
-    pub cipher: Cipher,
+    pub cipher: Aes256CbcPkcs7,
     pub key: Vec<u8>,
     pub iv: Vec<u8>,
 }
@@ -38,6 +44,10 @@ unsafe impl Sync for WXWorkProject {}
 
 pub type WXWorkProjectPtr = Arc<WXWorkProject>;
 pub type WXWorkProjectMap = HashMap<String, WXWorkProjectPtr>;
+
+// fn get_block_size<T: BlockCipher + NewBlockCipher>() -> usize {
+//     T::BlockSize::to_usize()
+// }
 
 impl WXWorkProject {
     pub fn parse(json: &serde_json::Value) -> WXWorkProjectMap {
@@ -187,39 +197,47 @@ impl WXWorkProject {
             }
         };
 
-        let cipher_openssl = Cipher::aes_256_cbc();
-        if cipher_openssl.key_len() != aes_key_bin.len() {
-            error!(
-                "project \"{}\" configure encodingAESKey \"{}\" decode with invalid len {}, require 32",
-                proj_name,
-                proj_aes_key,
-                aes_key_bin.len()
-            );
-            eprintln!(
-                "project \"{}\" configure encodingAESKey \"{}\" decode with invalid len {}, require 32",
-                proj_name,
-                proj_aes_key,
-                aes_key_bin.len()
-            );
-            return None;
-        }
+        //let cipher_iv_len = <Aes256 as BlockCipher>::BlockSize::to_usize();
+        //let cipher_iv_len = U16::to_usize();
+        // According to https://en.wikipedia.org/wiki/Block_size_(cryptography)
+        // Block size of AES is always 128bits
+        let cipher_iv_len: usize = 16;
+        let cipher_iv = if aes_key_bin.len() >= cipher_iv_len {
+            Vec::from(&aes_key_bin[0..cipher_iv_len])
+        } else {
+            Vec::new()
+        };
+        let cipher_ctx = match Aes256CbcPkcs7::new_var(&aes_key_bin, &cipher_iv) {
+            Ok(x) => x,
+            Err(e) => {
+                let err_msg = format!(
+                    "project \"{}\" configure encodingAESKey \"{}\" failed, {:?}",
+                    proj_name, proj_aes_key, e
+                );
+                error!("{}", err_msg);
+                eprintln!("{}", err_msg);
+                return None;
+            }
+        };
 
-        let cipher_iv = if let Some(x) = cipher_openssl.iv_len() {
+        /*
+        let cipher_iv = if let Some(x) = cipher_ctx.iv_len() {
             Vec::from(&aes_key_bin[0..x])
         } else {
             Vec::new()
         };
+        */
 
         debug!(
             "project \"{}\" load aes key: \"{}\", iv: \"{}\", block size: {}",
             proj_name,
             hex::encode(&aes_key_bin),
             hex::encode(&cipher_iv),
-            cipher_openssl.block_size()
+            cipher_iv_len
         );
 
         let cipher_info = WXWorkProjectCipherInfo {
-            cipher: cipher_openssl,
+            cipher: cipher_ctx,
             key: aes_key_bin,
             iv: cipher_iv,
         };
@@ -299,6 +317,7 @@ impl WXWorkProject {
         ret
     }
 
+    #[allow(unused)]
     pub fn pkcs7_encode(&self, input: &[u8]) -> Vec<u8> {
         let block_size: usize = 32;
         let mut ret = Vec::new();
@@ -317,6 +336,7 @@ impl WXWorkProject {
         ret
     }
 
+    #[allow(unused)]
     pub fn pkcs7_decode<'a>(&self, input: &'a [u8]) -> &'a [u8] {
         let block_size: usize = 32;
 
@@ -337,28 +357,26 @@ impl WXWorkProject {
         // 去掉rand_msg头部的16个随机字节和4个字节的msg_len，截取msg_len长度的部分即为msg，剩下的为尾部的receiveid
         // 网络字节序
 
-        let mut decrypter: Crypter;
-        let block_size: usize;
+        let decrypter;
+        // let block_size: usize;
 
         match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                decrypter = match Crypter::new(ci.cipher, Mode::Decrypt, &ci.key, Some(&ci.iv)) {
+                decrypter = match Aes256CbcPkcs7::new_var(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
-                            "project \"{}\" create Crypter for decrypt {} with key={} iv={} failed\n{:?}",
+                            "project \"{}\" try to create aes256 decrypter failed, {:?}",
                             self.name(),
-                            hex::encode(input),
-                            hex::encode(&ci.key),
-                            hex::encode(&ci.iv),
                             e
                         );
-                        debug!("{}", ret);
+                        error!("{}", ret);
                         return Err(ret);
                     }
                 };
-                block_size = ci.cipher.block_size();
+                // decrypter = ci.cipher.clone();
+                // block_size = ci.cipher.block_size();
             }
             Err(e) => {
                 let ret = format!(
@@ -371,6 +389,16 @@ impl WXWorkProject {
             }
         }
 
+        match decrypter.decrypt_vec(&input) {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                let ret = format!("project \"{}\" try to decrypt failed, {:?}", self.name(), e);
+                error!("{}", ret);
+                Err(ret)
+            }
+        }
+
+        /*
         decrypter.pad(false);
         let mut plaintext = vec![0; input.len() + block_size];
         let mut plaintext_count = match decrypter.update(input, &mut plaintext) {
@@ -403,6 +431,7 @@ impl WXWorkProject {
 
         plaintext.truncate(plaintext_count);
         Ok(plaintext)
+        */
     }
 
     pub fn decrypt_msg_raw_base64(&self, input: &str) -> Result<Vec<u8>, String> {
@@ -434,7 +463,7 @@ impl WXWorkProject {
         &self,
         input: &str,
     ) -> Result<message::WXWorkMessageDec, String> {
-        let dec_bin = match self.decrypt_msg_raw_base64(input) {
+        let dec_bin_unpadding = match self.decrypt_msg_raw_base64(input) {
             Ok(x) => x,
             Err(e) => {
                 return Err(e);
@@ -446,13 +475,13 @@ impl WXWorkProject {
             self.name(),
             input
         );
-        let dec_bin_unpadding = self.pkcs7_decode(&dec_bin);
+        // let dec_bin_unpadding = self.pkcs7_decode(&dec_bin);
 
         if dec_bin_unpadding.len() <= 20 {
             let err_msg = format!(
                 "project \"{}\" decode {} data length invalid",
                 self.name(),
-                hex::encode(&dec_bin)
+                hex::encode(&dec_bin_unpadding)
             );
             error!("{}", err_msg);
             return Err(err_msg);
@@ -529,14 +558,28 @@ impl WXWorkProject {
         padded_plaintext.extend_from_slice(&input_len_buf);
         padded_plaintext.extend_from_slice(input);
 
-        let padded_input = self.pkcs7_encode(&padded_plaintext);
+        // let padded_input = self.pkcs7_encode(&padded_plaintext);
 
-        let mut encrypter: Crypter;
-        let block_size: usize;
+        let encrypter;
+        // let block_size: usize;
 
         match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
+                encrypter = match Aes256CbcPkcs7::new_var(&ci.key, &ci.iv) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        let ret = format!(
+                            "project \"{}\" try to create aes256 encrypter failed, {:?}",
+                            self.name(),
+                            e
+                        );
+                        error!("{}", ret);
+                        return Err(ret);
+                    }
+                };
+                // encrypter = ci.cipher.clone();
+                /*
                 encrypter = match Crypter::new(ci.cipher, Mode::Encrypt, &ci.key, Some(&ci.iv)) {
                     Ok(x) => x,
                     Err(e) => {
@@ -553,6 +596,7 @@ impl WXWorkProject {
                     }
                 };
                 block_size = ci.cipher.block_size();
+                */
             }
             Err(e) => {
                 let ret = format!(
@@ -565,6 +609,9 @@ impl WXWorkProject {
             }
         }
 
+        Ok(encrypter.encrypt_vec(&padded_plaintext))
+
+        /*
         encrypter.pad(false);
         let mut plaintext = vec![0; padded_input.len() + block_size];
         let mut plaintext_count = match encrypter.update(&padded_input, &mut plaintext) {
@@ -597,6 +644,7 @@ impl WXWorkProject {
 
         plaintext.truncate(plaintext_count);
         Ok(plaintext)
+        */
     }
 
     pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {
@@ -628,11 +676,14 @@ impl WXWorkProject {
         datas.sort();
         let cat_str = datas.concat();
 
-        let hash_res = hash::hash(hash::MessageDigest::sha1(), cat_str.as_bytes());
-        match hash_res {
-            Ok(x) => hex::encode(x.as_ref()),
-            Err(e) => format!("Sha1 for {} failed, {:?}", cat_str, e),
-        }
+        let hash_res =
+            ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, cat_str.as_bytes());
+        // let hash_res = hash::hash(hash::MessageDigest::sha1(), cat_str.as_bytes());
+        // match hash_res {
+        //     Ok(x) => hex::encode(x.as_ref()),
+        //     Err(e) => format!("Sha1 for {} failed, {:?}", cat_str, e),
+        // }
+        hex::encode(&hash_res.as_ref())
     }
 
     pub fn check_msg_signature(
@@ -665,9 +716,10 @@ impl WXWorkProject {
     }
 
     fn alloc_random_str(&self) -> String {
-        use openssl::rand::rand_bytes;
+        use ring::rand::SystemRandom;
+        let rng = SystemRandom::new();
         let mut buf = [0; 8];
-        let _ = rand_bytes(&mut buf);
+        let _ = rng.fill(&mut buf);
         hex::encode(buf)
     }
 

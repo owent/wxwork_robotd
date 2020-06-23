@@ -1,104 +1,82 @@
 [package]
-name = "wxwork_robotd"
-version = "0.8.0"
-readme = "README.md"
-description = "Robot service for WXWork"
 authors = ["owent <admin@owent.net>"]
-homepage = "https://crates.io/crates/wxwork_robotd"
-documentation = "https://github.com/owt5008137/wxwork_robotd"
-repository = "https://github.com/owt5008137/wxwork_robotd"
-keywords = ["wxwork", "wework", "robot", "weixin", "wechat"]
 categories = ["network-programming", "web-programming::http-server", "web-programming::http-client", "development-tools"]
-license = "MIT OR Apache-2.0"
-include = [
-    "src/**/*.rs",
-    "Cargo.toml",
-    "Cross.toml",
-    "README.md",
-    "tools/__init__.py",
-    "tools/qyapi_wx_send_robot.py",
-]
+description = "Robot service for WXWork"
+documentation = "https://github.com/owt5008137/wxwork_robotd"
 edition = "2018"
+homepage = "https://crates.io/crates/wxwork_robotd"
+include = ["src/**/*.rs", "Cargo.toml", "Cross.toml", "README.md", "tools/__init__.py", "tools/qyapi_wx_send_robot.py"]
+keywords = ["wxwork", "wework", "robot", "weixin", "wechat"]
+license = "MIT OR Apache-2.0"
+name = "wxwork_robotd"
+readme = "README.md"
+repository = "https://github.com/owt5008137/wxwork_robotd"
+version = "0.8.0"
+[[bin]]
+name = "wxwork_robotd"
+
+[build-dependencies]
+[build-dependencies.clap]
+default-features = false
+features = ["suggestions", "color"]
+version = "^2.33.0"
 
 [dependencies]
+actix-rt = "^1.1.1"
+byteorder = "^1.3.2"
+bytes = ">=0.5.0"
+chrono = ">=0.4.11"
+futures = "^0.3.5"
+handlebars = "^3.1.0"
+hex = ">=0.3.2"
+lazy_static = "^1.2.0"
+log = ">=0.4.3"
+mio-uds = "^0.6.7"
+ring = ">=0.16.0"
+rustls = ">=0.17.0"
+quick-xml = ">=0.13.1"
+regex = "^1.3.9"
 serde = "^1.0.80"
 serde_derive = "^1.0.80"
 serde_json = "^1.0.33"
-actix-web = { version="^3.0.0-alpha.3", features=["openssl"] }
-actix-rt = "^1.1.1"
-futures = "^0.3.5"
-tokio = { version=">=0.2.0", features=["process", "io-std", "io-driver"] }
-log = ">=0.4.3"
-chrono = ">=0.4.11"
-hex = ">=0.3.2"
-regex = "^1.3.9"
-handlebars = "^3.1.0"
-bytes = ">=0.5.0"
-quick-xml = ">=0.13.1"
-lazy_static = "^1.2.0"
-# openssl = { version = ">=0.10.23", feature = ["vendored"] }
-openssl = { version = ">=0.10.23" }
-# openssl-sys = ">=0.9.47"
-byteorder = "^1.3.2"
+block-modes = ">=0.4.0"
+aes = ">=0.4.0"
+md-5 = ">=0.9.0"
+block-cipher = ">=0.7.1"
+# https://github.com/RustCrypto
 
-# fix version for dependencies
-mio-uds = "^0.6.7"
+[dependencies.actix-web]
+features = ["compress", "rustls"]
+version = "^3.0.0-alpha.3"
 
 [dependencies.clap]
-version = "^2.33.0"
 default-features = false
 features = ["suggestions", "color"]
-
-[build-dependencies.clap]
 version = "^2.33.0"
-default-features = false
-features = ["suggestions", "color"]
 
-[[bin]]
-name = "wxwork_robotd"
-# crate-type = ["staticlib"]
-
-# The development profile, used for `cargo build`.
-[profile.dev]
-# opt-level = 0      # controls the `--opt-level` the compiler builds with.
-                   # 0-1 is good for debugging. 2 is well-optimized. Max is 3.
-debug = true       # include debug information (debug symbols). Equivalent to
-                   # `-C debuginfo=2` compiler flag.
-rpath = false      # controls whether compiler should set loader paths.
-                   # If true, passes `-C rpath` flag to the compiler.
-lto = false        # Link Time Optimization usually reduces size of binaries
-                   # and static libraries. Increases compilation time.
-                   # If true, passes `-C lto` flag to the compiler.
-debug-assertions = true # controls whether debug assertions are enabled
-                   # (e.g. debug_assert!() and arithmetic overflow checks)
-codegen-units = 4  # if > 1 enables parallel code generation which improves
-                   # compile times, but prevents some optimizations.
-                   # Passes `-C codegen-units`. Ignored when `lto = true`.
-incremental = false
-panic = 'abort'    # panic strategy (`-C panic=...`), can also be 'abort'
-
-# The release profile, used for `cargo build --release`.
-[profile.release]
-# opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-incremental = false
-panic = 'abort'
-opt-level = "z"
-
-# [target.x86_64-unknown-linux-gnu]
-# rustflags = ["-C", "target-feature=+crt-static"]
-
-# [target.x86_64-unknown-linux-musl]
-# linker = "musl-gcc"
+[dependencies.tokio]
+features = ["process", "io-std", "io-driver"]
+version = ">=0.2.0"
 
 [features]
 system-alloc = []
 
-# [target.mips64el-unknown-linux-gnuabi64]
-# rustflags = ["--sysroot", "/home/owentou/prebuilt/buildroot/buildroot-2018.02.9/output/host"]
+[profile]
+[profile.dev]
+codegen-units = 4
+debug = true
+debug-assertions = true
+incremental = false
+lto = false
+panic = "abort"
+rpath = false
 
-[target.x86_64-pc-windows-msvc]
+[profile.release]
+codegen-units = 1
+debug = false
+debug-assertions = false
+incremental = false
+lto = true
+opt-level = "z"
+panic = "abort"
+rpath = false
