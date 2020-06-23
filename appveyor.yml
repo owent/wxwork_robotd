@@ -17,10 +17,15 @@ install:
       } ElseIf ($Env:TARGET -eq 'i686-pc-windows-gnu') {
           $Env:PATH += ';C:\msys64\mingw32\bin'
       }
+
       Invoke-WebRequest -Uri "https://win.rustup.rs/" -OutFile "rustup-init.exe"
+
       & ./rustup-init.exe -y --default-host $Env:TARGET --default-toolchain $Env:RUST_VERSION
+
       $Env:PATH += ";C:/Users/appveyor/.cargo/bin";
+
       & rustc -Vv
+
       & cargo -V
 
 cache: C:\Users\appveyor\.cargo\registry

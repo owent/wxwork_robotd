@@ -17,7 +17,8 @@ jobs:
       matrix:
         os: [windows-latest]
         rust: [stable]
-        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
+        target:
+          [x86_64-pc-windows-msvc, i686-pc-windows-msvc, x86_64-pc-windows-gnu]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup Rust
@@ -30,7 +31,13 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          cargo build --release --verbose --target ${{ matrix.target }}
+          if ("${{matrix.target}}" -eq "x86_64-pc-windows-gnu") {
+            cargo install xargo --force ;
+            cargo install cross --force ;
+            cross build --release --verbose --target ${{ matrix.target }}
+          } else {
+            cargo build --release --verbose --target ${{ matrix.target }}
+          }
           Copy-Item -Force -Recurse etc "./target/${{ matrix.target }}/release/"
           Copy-Item -Force -Recurse tools "./target/${{ matrix.target }}/release/"
           cd "./target/${{ matrix.target }}/release/"

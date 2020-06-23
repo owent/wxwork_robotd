@@ -9,7 +9,6 @@ env:
     - RUST_BACKTRACE=1
     - LANG="zh_CN.UTF-8"
     - USING_CROSS=0
-    - USING_TRUST=0
     - USING_SYSTEM_ALLOC=0
     - CROSS_DOCKER_IN_DOCKER=true
 
@@ -48,67 +47,67 @@ matrix:
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-gnu
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=mips-unknown-linux-gnu
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=mipsel-unknown-linux-gnu
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=mips64-unknown-linux-gnuabi64
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=mips64el-unknown-linux-gnuabi64
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=powerpc-unknown-linux-gnu
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=powerpc64-unknown-linux-gnu
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=powerpc64le-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=mips-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=mipsel-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=mips64-unknown-linux-gnuabi64
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=mips64el-unknown-linux-gnuabi64
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=powerpc-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=powerpc64-unknown-linux-gnu
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=powerpc64le-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-unknown-linux-gnu
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=aarch64-unknown-linux-musl
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=arm-unknown-linux-musleabihf
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=arm-unknown-linux-musleabi
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=armv7-unknown-linux-musleabihf
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=aarch64-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=arm-unknown-linux-musleabihf
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=arm-unknown-linux-musleabi
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=armv7-unknown-linux-musleabihf
     # linux-musl
     - os: linux
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-musl
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=mips-unknown-linux-musl
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   env: USING_TRUST=1 TARGET=mipsel-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=mips-unknown-linux-musl
+    - os: linux
+      dist: xenial
+      sudo: required
+      env: USING_CROSS=1 TARGET=mipsel-unknown-linux-musl
     - os: linux
       dist: xenial
       sudo: required
@@ -117,7 +116,7 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      env: USING_TRUST=1 TARGET=aarch64-linux-android
+      env: USING_CROSS=1 TARGET=aarch64-linux-android
     - os: linux
       dist: xenial
       sudo: required
@@ -156,11 +155,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
   - rustup self update;
   - rustup update --force stable;
-  - if [ $USING_TRUST -ne 0 ]; then
-
-    set -e ;
-
-    elif [ $USING_CROSS -ne 0 ]; then
+  - if [[ $USING_CROSS -ne 0 ]]; then
 
     cargo install xargo --force;
 
@@ -174,17 +169,17 @@ before_install:
 
     fi
 
-install:
-  - if [ $USING_TRUST -ne 0 ]; then
-
-    bash ci/install.sh ;
-
-    source ~/.cargo/env || true ;
-
-    fi
+#install:
+#  - if [[ $USING_TRUST -ne 0 ]]; then
+#
+#    bash ci/install.sh ;
+#
+#    source ~/.cargo/env || true ;
+#
+#    fi
 
 script:
-  - if [ $USING_SYSTEM_ALLOC -eq 0 ]; then
+  - if [[ $USING_SYSTEM_ALLOC -eq 0 ]]; then
 
     BUILD_WITH_SYSTEM_ALLOC="";
 
@@ -193,11 +188,7 @@ script:
     BUILD_WITH_SYSTEM_ALLOC=" --features system-alloc";
 
     fi
-  - if [ $USING_TRUST -ne 0 ]; then
-
-    bash ci/script.sh ;
-
-    elif [ $USING_CROSS -ne 0 ]; then
+  - if [[ $USING_CROSS -ne 0 ]]; then
 
     cross build --target $TARGET --release $BUILD_WITH_SYSTEM_ALLOC ;
 
@@ -207,13 +198,13 @@ script:
 
     fi
 
-    if [ -e "target/$TARGET/release/etc" ]; then
+    if [[ -e "target/$TARGET/release/etc" ]]; then
 
     rm -rf "target/$TARGET/release/etc";
 
     fi
 
-    if [ -e "target/$TARGET/release/tools" ]; then
+    if [[ -e "target/$TARGET/release/tools" ]]; then
 
     rm -rf "target/$TARGET/release/tools";
 
@@ -225,7 +216,7 @@ script:
 
     mkdir -p bin;
 
-    if [ -e wxwork_robotd ]; then
+    if [[ -e wxwork_robotd ]]; then
 
     cp -f wxwork_robotd bin/wxwork_robotd;
 
