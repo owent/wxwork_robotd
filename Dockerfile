@@ -10,4 +10,4 @@ COPY "./bin" "/opt/wxwork_robotd/"
 COPY "./etc" "/opt/wxwork_robotd/"
 COPY "./tools" "/opt/wxwork_robotd/"
 
-CMD ["/opt/wxwork_robotd/bin/wxwork_robotd", "/opt/wxwork_robotd/etc/conf.json"]
+CMD ["wxwork_robotd", "-c", "/opt/wxwork_robotd/etc/conf.json"]
