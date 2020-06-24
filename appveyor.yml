@@ -4,8 +4,6 @@ image: Visual Studio 2017
 environment:
   RUST_VERSION: stable
   matrix:
-    - TARGET: i686-pc-windows-gnu
-      BITS: 32
     - TARGET: x86_64-pc-windows-gnu
       BITS: 64
     - TARGET: i686-pc-windows-msvc

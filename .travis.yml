@@ -31,54 +31,54 @@ matrix:
     # - env: USING_TRUST=1 TARGET=x86_64-apple-ios
     #   os: osx
     # linux
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-gnueabi
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-unknown-linux-gnueabihf
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=mips-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=mipsel-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=mips64-unknown-linux-gnuabi64
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=mips64el-unknown-linux-gnuabi64
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=powerpc-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=powerpc64-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=powerpc64le-unknown-linux-gnu
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=aarch64-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-unknown-linux-gnueabi
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-unknown-linux-gnueabihf
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=mips-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=mipsel-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=mips64-unknown-linux-gnuabi64
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=mips64el-unknown-linux-gnuabi64
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=powerpc-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=powerpc64-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=powerpc64le-unknown-linux-gnu
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-unknown-linux-gnu
     - os: linux
       dist: xenial
       sudo: required
@@ -100,14 +100,14 @@ matrix:
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-musl
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=mips-unknown-linux-musl
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_CROSS=1 TARGET=mipsel-unknown-linux-musl
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=mips-unknown-linux-musl
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_CROSS=1 TARGET=mipsel-unknown-linux-musl
     - os: linux
       dist: xenial
       sudo: required
@@ -138,15 +138,15 @@ matrix:
       dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-netbsd
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-freebsd
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-freebsd
     # Solaris
-    - os: linux
-      dist: xenial
-      sudo: required
-      env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
+    # - os: linux
+    #   dist: xenial
+    #   sudo: required
+    #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-sun-solaris
     ## Windows
     # - env: TARGET=x86_64-pc-windows-gnu
 
