@@ -59,11 +59,9 @@ async fn main() -> io::Result<()> {
             eprintln!("Setup debug log failed: {:?}.", e);
             return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
         }
-    } else {
-        if let Err(e) = logger::init(app_env.log, app_env.log_rotate, app_env.log_rotate_size) {
-            eprintln!("Setup log failed: {:?}.", e);
-            return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
-        }
+    } else if let Err(e) = logger::init(app_env.log, app_env.log_rotate, app_env.log_rotate_size) {
+        eprintln!("Setup log failed: {:?}.", e);
+        return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
     }
 
     if !app_env.reload() {
@@ -76,13 +74,13 @@ async fn main() -> io::Result<()> {
         let app = App::new().wrap(Logger::new(
             "[ACCESS] %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i %{Content-Type}i\" %T",
         ));
-        let reg_move_default = app_env.clone();
-        let reg_move_robot = app_env.clone();
+        let reg_move_default = app_env;
+        let reg_move_robot = app_env;
 
         app
             // ====== register for index ======
             .service(
-                web::resource(format!("{}", app_env.prefix).as_str())
+                web::resource(app_env.prefix.to_string())
                     .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
                     .to(move |req| handles::default::dispatch_default_index(reg_move_default, req)),
             )
@@ -104,8 +102,8 @@ async fn main() -> io::Result<()> {
     }
     server = server
         .backlog(app_env.conf.backlog)
-        .maxconn(app_env.conf.max_connection_per_worker)
-        .maxconnrate(app_env.conf.max_concurrent_rate_per_worker)
+        .max_connections(app_env.conf.max_connection_per_worker)
+        .max_connection_rate(app_env.conf.max_concurrent_rate_per_worker)
         .keep_alive(app_env.conf.keep_alive)
         .client_timeout(app_env.conf.client_timeout)
         .client_shutdown(app_env.conf.client_shutdown);

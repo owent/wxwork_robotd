@@ -2,36 +2,35 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use regex::{Regex, RegexBuilder};
-use serde_json;
 
 #[derive(Debug, Clone)]
-pub struct WXWorkCommandHelp {
+pub struct WxWorkCommandHelp {
     pub prefix: String,
     pub suffix: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkCommandEcho {
+pub struct WxWorkCommandEcho {
     pub echo: String,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum WXWorkCommandSpawnOutputType {
+pub enum WxWorkCommandSpawnOutputType {
     Markdown,
     Text,
     Image,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkCommandSpawn {
+pub struct WxWorkCommandSpawn {
     pub exec: String,
     pub args: Vec<String>,
     pub cwd: String,
-    pub output_type: WXWorkCommandSpawnOutputType,
+    pub output_type: WxWorkCommandSpawnOutputType,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum WXWorkCommandHttpMethod {
+pub enum WxWorkCommandHttpMethod {
     Auto,
     Get,
     Post,
@@ -41,27 +40,27 @@ pub enum WXWorkCommandHttpMethod {
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkCommandHttp {
+pub struct WxWorkCommandHttp {
     pub url: String,
     pub echo: String,
     pub post: String,
-    pub method: WXWorkCommandHttpMethod,
+    pub method: WxWorkCommandHttpMethod,
     pub content_type: String,
     pub headers: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
-pub enum WXWorkCommandData {
-    ECHO(Arc<WXWorkCommandEcho>),
-    SPAWN(Arc<WXWorkCommandSpawn>),
-    HTTP(Arc<WXWorkCommandHttp>),
-    HELP(Arc<WXWorkCommandHelp>),
-    IGNORE,
+pub enum WxWorkCommandData {
+    Echo(Arc<WxWorkCommandEcho>),
+    Spawn(Arc<WxWorkCommandSpawn>),
+    Http(Arc<WxWorkCommandHttp>),
+    Help(Arc<WxWorkCommandHelp>),
+    Ignore,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkCommand {
-    pub data: WXWorkCommandData,
+pub struct WxWorkCommand {
+    pub data: WxWorkCommandData,
     name: Arc<String>,
     pub envs: serde_json::Value,
     rule: Regex,
@@ -72,10 +71,10 @@ pub struct WXWorkCommand {
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkCommandMatch(serde_json::Value);
+pub struct WxWorkCommandMatch(serde_json::Value);
 
-pub type WXWorkCommandPtr = Arc<WXWorkCommand>;
-pub type WXWorkCommandList = Vec<WXWorkCommandPtr>;
+pub type WxWorkCommandPtr = Arc<WxWorkCommand>;
+pub type WxWorkCommandList = Vec<WxWorkCommandPtr>;
 
 pub fn read_string_from_json_object(json: &serde_json::Value, name: &str) -> Option<String> {
     if let Some(ref x) = json.as_object() {
@@ -104,7 +103,7 @@ pub fn read_object_from_json_object<'a>(
     None
 }
 
-pub fn read_bool_from_json_object<'a>(json: &'a serde_json::Value, name: &str) -> Option<bool> {
+pub fn read_bool_from_json_object(json: &serde_json::Value, name: &str) -> Option<bool> {
     if let Some(ref x) = json.as_object() {
         if let Some(v) = x.get(name) {
             return match v {
@@ -124,15 +123,15 @@ pub fn read_bool_from_json_object<'a>(json: &'a serde_json::Value, name: &str) -
                 serde_json::Value::String(r) => {
                     let lc_name = r.to_lowercase();
                     Some(
-                        lc_name.len() > 0
+                        !lc_name.is_empty()
                             && lc_name.as_str() != "false"
                             && lc_name.as_str() != "no"
                             && lc_name.as_str() != "disable"
                             && lc_name.as_str() != "disabled",
                     )
                 }
-                serde_json::Value::Array(r) => Some(r.len() > 0),
-                serde_json::Value::Object(r) => Some(r.len() > 0),
+                serde_json::Value::Array(r) => Some(!r.is_empty()),
+                serde_json::Value::Object(r) => Some(!r.is_empty()),
             };
         }
     }
@@ -155,7 +154,7 @@ pub fn read_array_from_json_object<'a>(
     None
 }
 
-pub fn read_i64_from_json_object<'a>(json: &'a serde_json::Value, name: &str) -> Option<i64> {
+pub fn read_i64_from_json_object(json: &serde_json::Value, name: &str) -> Option<i64> {
     if let Some(ref x) = json.as_object() {
         if let Some(v) = x.get(name) {
             return match v {
@@ -220,13 +219,13 @@ pub fn merge_envs(mut l: serde_json::Value, r: &serde_json::Value) -> serde_json
     l
 }
 
-impl WXWorkCommand {
-    pub fn parse(json: &serde_json::Value) -> WXWorkCommandList {
-        let mut ret: WXWorkCommandList = Vec::new();
+impl WxWorkCommand {
+    pub fn parse(json: &serde_json::Value) -> WxWorkCommandList {
+        let mut ret: WxWorkCommandList = Vec::new();
 
         if let Some(kvs) = json.as_object() {
             for (k, v) in kvs {
-                let cmd_res = WXWorkCommand::new(k, v);
+                let cmd_res = WxWorkCommand::new(k, v);
                 if let Some(cmd) = cmd_res {
                     ret.push(Arc::new(cmd));
                 }
@@ -244,8 +243,8 @@ impl WXWorkCommand {
         ret
     }
 
-    pub fn new(cmd_name: &str, json: &serde_json::Value) -> Option<WXWorkCommand> {
-        let cmd_data: WXWorkCommandData;
+    pub fn new(cmd_name: &str, json: &serde_json::Value) -> Option<WxWorkCommand> {
+        let cmd_data: WxWorkCommandData;
         let mut envs_obj = json!({});
         // read_bool_from_json_object
         let mut reg_builder = RegexBuilder::new(cmd_name);
@@ -307,7 +306,7 @@ impl WXWorkCommand {
             };
 
             cmd_data = match type_name.to_lowercase().as_str() {
-                "echo" => WXWorkCommandData::ECHO(Arc::new(WXWorkCommandEcho {
+                "echo" => WxWorkCommandData::Echo(Arc::new(WxWorkCommandEcho {
                     echo: if let Some(x) = read_string_from_json_object(json, "echo") {
                         x
                     } else {
@@ -347,17 +346,17 @@ impl WXWorkCommand {
                         String::default()
                     };
 
-                    WXWorkCommandData::SPAWN(Arc::new(WXWorkCommandSpawn {
+                    WxWorkCommandData::Spawn(Arc::new(WxWorkCommandSpawn {
                         exec: exec_field,
                         args: args_field,
                         cwd: cwd_field,
                         output_type: match read_string_from_json_object(json, "output_type") {
                             Some(x) => match x.to_lowercase().as_str() {
-                                "text" => WXWorkCommandSpawnOutputType::Text,
-                                "image" => WXWorkCommandSpawnOutputType::Image,
-                                _ => WXWorkCommandSpawnOutputType::Markdown,
+                                "text" => WxWorkCommandSpawnOutputType::Text,
+                                "image" => WxWorkCommandSpawnOutputType::Image,
+                                _ => WxWorkCommandSpawnOutputType::Markdown,
                             },
-                            None => WXWorkCommandSpawnOutputType::Markdown,
+                            None => WxWorkCommandSpawnOutputType::Markdown,
                         },
                     }))
                 }
@@ -379,20 +378,20 @@ impl WXWorkCommand {
                         String::from("Ok")
                     };
 
-                    WXWorkCommandData::HTTP(Arc::new(WXWorkCommandHttp {
+                    WxWorkCommandData::Http(Arc::new(WxWorkCommandHttp {
                         url: url_field,
                         echo: echo_field,
                         post: post_field,
                         method: match read_string_from_json_object(json, "method") {
                             Some(x) => match x.to_lowercase().as_str() {
-                                "get" => WXWorkCommandHttpMethod::Get,
-                                "post" => WXWorkCommandHttpMethod::Post,
-                                "delete" => WXWorkCommandHttpMethod::Delete,
-                                "put" => WXWorkCommandHttpMethod::Put,
-                                "head" => WXWorkCommandHttpMethod::Head,
-                                _ => WXWorkCommandHttpMethod::Auto,
+                                "get" => WxWorkCommandHttpMethod::Get,
+                                "post" => WxWorkCommandHttpMethod::Post,
+                                "delete" => WxWorkCommandHttpMethod::Delete,
+                                "put" => WxWorkCommandHttpMethod::Put,
+                                "head" => WxWorkCommandHttpMethod::Head,
+                                _ => WxWorkCommandHttpMethod::Auto,
                             },
-                            None => WXWorkCommandHttpMethod::Auto,
+                            None => WxWorkCommandHttpMethod::Auto,
                         },
                         content_type: if let Some(x) =
                             read_string_from_json_object(json, "content_type")
@@ -428,7 +427,7 @@ impl WXWorkCommand {
                         },
                     }))
                 }
-                "help" => WXWorkCommandData::HELP(Arc::new(WXWorkCommandHelp {
+                "help" => WxWorkCommandData::Help(Arc::new(WxWorkCommandHelp {
                     prefix: if let Some(x) = read_string_from_json_object(json, "prefix") {
                         x
                     } else {
@@ -440,7 +439,7 @@ impl WXWorkCommand {
                         String::default()
                     },
                 })),
-                "ignore" => WXWorkCommandData::IGNORE,
+                "ignore" => WxWorkCommandData::Ignore,
                 _ => {
                     error!("command {} configure type invalid: {}", cmd_name, json);
                     return None;
@@ -459,7 +458,7 @@ impl WXWorkCommand {
             }
         }
 
-        Some(WXWorkCommand {
+        Some(WxWorkCommand {
             data: cmd_data,
             name: Arc::new(String::from(cmd_name)),
             rule: rule_obj,
@@ -487,11 +486,11 @@ impl WXWorkCommand {
         self.name.clone()
     }
 
-    pub fn try_capture(&self, message: &str) -> WXWorkCommandMatch {
+    pub fn try_capture(&self, message: &str) -> WxWorkCommandMatch {
         let caps = if let Some(x) = self.rule.captures(message) {
             x
         } else {
-            return WXWorkCommandMatch(serde_json::Value::Null);
+            return WxWorkCommandMatch(serde_json::Value::Null);
         };
 
         let mut json = self.envs.clone();
@@ -507,7 +506,7 @@ impl WXWorkCommand {
             }
         }
 
-        WXWorkCommandMatch(json)
+        WxWorkCommandMatch(json)
     }
 
     pub fn description(&self) -> Arc<String> {
@@ -519,7 +518,7 @@ impl WXWorkCommand {
     }
 }
 
-impl WXWorkCommandMatch {
+impl WxWorkCommandMatch {
     pub fn has_result(&self) -> bool {
         self.0.is_object()
     }
@@ -533,12 +532,12 @@ impl WXWorkCommandMatch {
     }
 }
 
-pub fn get_command_description(cmd: &WXWorkCommandPtr) -> Option<Arc<String>> {
+pub fn get_command_description(cmd: &WxWorkCommandPtr) -> Option<Arc<String>> {
     if cmd.is_hidden() {
         None
     } else {
         let desc = cmd.description();
-        if desc.len() > 0 {
+        if !desc.is_empty() {
             Some(desc)
         } else {
             Some(cmd.name())

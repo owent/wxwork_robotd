@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use chrono::Local;
-use log;
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 
 struct FileRotateLoggerRuntime {
@@ -34,7 +33,6 @@ impl FileRotateLogger {
             if let Err(e) = file.sync_all() {
                 eprintln!("Try to sync log file failed: {:?}", e);
             }
-            drop(file);
         }
 
         runtime.current_rotate = (runtime.current_rotate + 1) % self.rotate_num;
@@ -80,16 +78,15 @@ impl Log for FileRotateLogger {
             let mut runtime = runtime_rc.borrow_mut();
 
             // open log file for the first time
-            if let None = runtime.current_file {
+            if runtime.current_file.is_none() {
                 let full_file_path = get_log_path(self.file_path.as_str(), runtime.current_rotate);
                 let file_path = Path::new(full_file_path.as_str());
                 if let Some(dir_path) = file_path.parent() {
                     if !dir_path.as_os_str().is_empty()
                         && (!dir_path.exists() || !dir_path.is_dir())
+                        && create_dir_all(dir_path).is_err()
                     {
-                        if create_dir_all(dir_path).is_err() {
-                            eprintln!("Try to create log directory {:?} failed", dir_path);
-                        }
+                        eprintln!("Try to create log directory {:?} failed", dir_path);
                     }
                 }
 
@@ -115,13 +112,11 @@ impl Log for FileRotateLogger {
                     }
 
                     self.next_file(&mut runtime);
-                } else {
-                    if self.level >= Level::Debug {
-                        println!(
-                            "Open old log file {} success with size {}(less than the rotate size {})",
-                            full_file_path, runtime.current_size, self.rotate_size
-                        )
-                    }
+                } else if self.level >= Level::Debug {
+                    println!(
+                        "Open old log file {} success with size {}(less than the rotate size {})",
+                        full_file_path, runtime.current_size, self.rotate_size
+                    )
                 }
             }
 
@@ -208,7 +203,7 @@ pub fn init_with_level(
     rotate_size: usize,
 ) -> Result<(), SetLoggerError> {
     let mut init_rotate = 0;
-    let mut last_modify_time = SystemTime::UNIX_EPOCH.clone();
+    let mut last_modify_time = SystemTime::UNIX_EPOCH;
     for idx in 0..rotate_num {
         let test_file_path = get_log_path(file_path, idx);
         let test_file = File::open(test_file_path);
@@ -216,7 +211,7 @@ pub fn init_with_level(
             if let Ok(meta) = file.metadata() {
                 if let Ok(time) = meta.modified() {
                     if time > last_modify_time {
-                        last_modify_time = time.clone();
+                        last_modify_time = time;
                         init_rotate = idx;
                     }
                 }
@@ -229,10 +224,10 @@ pub fn init_with_level(
 
     unsafe {
         SHARED_FILE_ROTATE_LOG = FileRotateLoggerWrapper::Logger(FileRotateLogger {
-            level: level,
+            level,
             file_path: String::from(file_path),
             rotate_num: if rotate_num > 0 { rotate_num } else { 1 },
-            rotate_size: rotate_size,
+            rotate_size,
             runtime: Arc::new(Mutex::new(RefCell::new(FileRotateLoggerRuntime {
                 current_rotate: init_rotate,
                 current_size: 0,

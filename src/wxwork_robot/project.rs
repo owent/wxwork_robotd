@@ -5,10 +5,8 @@ use block_modes::block_padding::NoPadding;
 use block_modes::{BlockMode, Cbc};
 use byteorder::{BigEndian, ByteOrder};
 // use openssl::symm::{Cipher, Crypter, Mode};
-use ring;
 use ring::rand::SecureRandom;
 
-use serde_json;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
@@ -21,41 +19,41 @@ use super::{base64, command, message};
 type Aes256CbcNoPadding = Cbc<Aes256, NoPadding>;
 
 // #[derive(Clone)]
-struct WXWorkProjectCipherInfo {
+struct WxWorkProjectCipherInfo {
     pub cipher: Aes256CbcNoPadding,
     pub key: Vec<u8>,
     pub iv: Vec<u8>,
 }
 
-pub struct WXWorkProject {
+pub struct WxWorkProject {
     name: Arc<String>,
     pub token: String,
     pub encoding_aes_key: String,
     pub envs: Rc<serde_json::Value>,
-    pub cmds: Rc<command::WXWorkCommandList>,
-    pub events: Rc<command::WXWorkCommandList>,
+    pub cmds: Rc<command::WxWorkCommandList>,
+    pub events: Rc<command::WxWorkCommandList>,
 
-    cipher_info: Arc<Mutex<Box<WXWorkProjectCipherInfo>>>,
+    cipher_info: Arc<Mutex<Box<WxWorkProjectCipherInfo>>>,
     nonce: AtomicUsize,
 }
 
-unsafe impl Send for WXWorkProject {}
-unsafe impl Sync for WXWorkProject {}
+unsafe impl Send for WxWorkProject {}
+unsafe impl Sync for WxWorkProject {}
 
-pub type WXWorkProjectPtr = Arc<WXWorkProject>;
-pub type WXWorkProjectMap = HashMap<String, WXWorkProjectPtr>;
+pub type WxWorkProjectPtr = Arc<WxWorkProject>;
+pub type WxWorkProjectMap = HashMap<String, WxWorkProjectPtr>;
 
 // fn get_block_size<T: BlockCipher + NewBlockCipher>() -> usize {
 //     T::BlockSize::to_usize()
 // }
 
-impl WXWorkProject {
-    pub fn parse(json: &serde_json::Value) -> WXWorkProjectMap {
-        let mut ret: HashMap<String, Arc<WXWorkProject>> = HashMap::new();
+impl WxWorkProject {
+    pub fn parse(json: &serde_json::Value) -> WxWorkProjectMap {
+        let mut ret: HashMap<String, Arc<WxWorkProject>> = HashMap::new();
 
         if let Some(arr) = json.as_array() {
             for conf in arr {
-                let proj_res = WXWorkProject::new(conf);
+                let proj_res = WxWorkProject::new(conf);
                 if let Some(proj) = proj_res {
                     ret.insert((*proj.name()).clone(), Arc::new(proj));
                 }
@@ -65,7 +63,7 @@ impl WXWorkProject {
         ret
     }
 
-    pub fn new(json: &serde_json::Value) -> Option<WXWorkProject> {
+    pub fn new(json: &serde_json::Value) -> Option<WxWorkProject> {
         if !json.is_object() {
             error!("project configure invalid: {}", json);
             eprintln!("project configure invalid: {}", json);
@@ -74,8 +72,8 @@ impl WXWorkProject {
         let proj_name: String;
         let proj_token: String;
         let proj_aes_key: String;
-        let proj_cmds: command::WXWorkCommandList;
-        let proj_events: command::WXWorkCommandList;
+        let proj_cmds: command::WxWorkCommandList;
+        let proj_events: command::WxWorkCommandList;
         let mut envs_obj = json!({});
 
         {
@@ -132,13 +130,13 @@ impl WXWorkProject {
                     } else {
                         serde_json::Value::String(v.to_string())
                     };
-                    envs_var_count = envs_var_count + 1;
+                    envs_var_count += 1;
                 }
             }
 
             if let Some(kvs) = json.as_object() {
                 if let Some(cmds_json) = kvs.get("cmds") {
-                    proj_cmds = command::WXWorkCommand::parse(cmds_json);
+                    proj_cmds = command::WxWorkCommand::parse(cmds_json);
                 } else {
                     proj_cmds = Vec::new();
                 }
@@ -148,7 +146,7 @@ impl WXWorkProject {
 
             if let Some(kvs) = json.as_object() {
                 if let Some(cmds_json) = kvs.get("events") {
-                    proj_events = command::WXWorkCommand::parse(cmds_json);
+                    proj_events = command::WxWorkCommand::parse(cmds_json);
                 } else {
                     proj_events = Vec::new();
                 }
@@ -236,13 +234,13 @@ impl WXWorkProject {
             cipher_iv_len
         );
 
-        let cipher_info = WXWorkProjectCipherInfo {
+        let cipher_info = WxWorkProjectCipherInfo {
             cipher: cipher_ctx,
             key: aes_key_bin,
             iv: cipher_iv,
         };
 
-        Some(WXWorkProject {
+        Some(WxWorkProject {
             name: Arc::new(proj_name),
             token: proj_token,
             encoding_aes_key: proj_aes_key,
@@ -255,7 +253,7 @@ impl WXWorkProject {
                 if let Ok(x) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
                     (x.as_secs() as usize) << 16
                 } else {
-                    (1 as usize) << 16
+                    1_usize << 16
                 },
             ),
         })
@@ -269,23 +267,23 @@ impl WXWorkProject {
         &self,
         message: &str,
         allow_hidden: bool,
-    ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
-        WXWorkProject::try_capture_commands(&self.cmds, message, allow_hidden)
+    ) -> Option<(command::WxWorkCommandPtr, command::WxWorkCommandMatch)> {
+        WxWorkProject::try_capture_commands(&self.cmds, message, allow_hidden)
     }
 
     pub fn try_events(
         &self,
         message: &str,
         allow_hidden: bool,
-    ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
-        WXWorkProject::try_capture_commands(&self.events, message, allow_hidden)
+    ) -> Option<(command::WxWorkCommandPtr, command::WxWorkCommandMatch)> {
+        WxWorkProject::try_capture_commands(&self.events, message, allow_hidden)
     }
 
     pub fn try_capture_commands(
-        cmds: &command::WXWorkCommandList,
+        cmds: &[command::WxWorkCommandPtr],
         message: &str,
         allow_hidden: bool,
-    ) -> Option<(command::WXWorkCommandPtr, command::WXWorkCommandMatch)> {
+    ) -> Option<(command::WxWorkCommandPtr, command::WxWorkCommandMatch)> {
         for cmd in cmds {
             // empty message must equal
             if cmd.name().is_empty() && !message.is_empty() {
@@ -309,7 +307,7 @@ impl WXWorkProject {
 
     pub fn generate_template_vars(
         &self,
-        cmd_match: &command::WXWorkCommandMatch,
+        cmd_match: &command::WxWorkCommandMatch,
     ) -> serde_json::Value {
         let mut ret = self.envs.as_ref().clone();
         ret = command::merge_envs(ret, cmd_match.ref_json());
@@ -340,7 +338,7 @@ impl WXWorkProject {
     pub fn pkcs7_decode<'a>(&self, input: &'a [u8]) -> &'a [u8] {
         let block_size: usize = 32;
 
-        if 0 == input.len() {
+        if input.is_empty() {
             return input;
         }
 
@@ -453,16 +451,14 @@ impl WXWorkProject {
 
         match self.decrypt_msg_raw(&bin) {
             Ok(x) => Ok(x),
-            Err(e) => {
-                return Err(e);
-            }
+            Err(e) => Err(e),
         }
     }
 
     pub fn decrypt_msg_raw_base64_content(
         &self,
         input: &str,
-    ) -> Result<message::WXWorkMessageDec, String> {
+    ) -> Result<message::WxWorkMessageDec, String> {
         let dec_bin = match self.decrypt_msg_raw_base64(input) {
             Ok(x) => x,
             Err(e) => {
@@ -538,13 +534,13 @@ impl WXWorkProject {
             receiveid,
             msg_content
         );
-        Ok(message::WXWorkMessageDec {
+        Ok(message::WxWorkMessageDec {
             content: msg_content,
-            receiveid: receiveid,
+            receiveid,
         })
     }
 
-    pub fn encrypt_msg_raw(&self, input: &[u8], random_str: &String) -> Result<Vec<u8>, String> {
+    pub fn encrypt_msg_raw(&self, input: &[u8], random_str: &str) -> Result<Vec<u8>, String> {
         // rand_msg=AES_Decrypt(aes_msg)
         // 去掉rand_msg头部的16个随机字节和4个字节的msg_len，截取msg_len长度的部分即为msg，剩下的为尾部的receiveid
         // 网络字节序,回包的receiveid直接为空即可
@@ -674,7 +670,7 @@ impl WXWorkProject {
                         e
                     );
                     debug!("{}", ret);
-                    return Err(ret);
+                    Err(ret)
                 }
             },
             Err(e) => Err(e),
@@ -687,7 +683,7 @@ impl WXWorkProject {
         // sort的含义是将参数值按照字母字典排序，然后从小到大拼接成一个字符串
         // sha1处理结果要编码为可见字符，编码的方式是把每字节散列值打印为%02x（即16进制，C printf语法）格式，全部小写
         let mut datas = [self.token.as_str(), timestamp, nonce, msg_encrypt];
-        datas.sort();
+        datas.sort_unstable();
         let cat_str = datas.concat();
 
         let hash_res =
@@ -784,7 +780,7 @@ impl WXWorkProject {
         }
     }
 
-    pub fn make_text_response(&self, msg: message::WXWorkMessageTextRsp) -> HttpResponse {
+    pub fn make_text_response(&self, msg: message::WxWorkMessageTextRsp) -> HttpResponse {
         let rsp_xml = match message::pack_text_message(msg) {
             Ok(x) => x,
             Err(e) => {
@@ -801,7 +797,7 @@ impl WXWorkProject {
         self.make_xml_response(rsp_xml)
     }
 
-    pub fn make_markdown_response(&self, msg: message::WXWorkMessageMarkdownRsp) -> HttpResponse {
+    pub fn make_markdown_response(&self, msg: message::WxWorkMessageMarkdownRsp) -> HttpResponse {
         let rsp_xml = match message::pack_markdown_message(msg) {
             Ok(x) => x,
             Err(e) => {
@@ -819,14 +815,14 @@ impl WXWorkProject {
     }
 
     pub fn make_error_response(&self, msg: String) -> HttpResponse {
-        self.make_markdown_response(message::WXWorkMessageMarkdownRsp { content: msg })
+        self.make_markdown_response(message::WxWorkMessageMarkdownRsp { content: msg })
     }
 
     pub fn make_markdown_response_with_text(&self, msg: String) -> HttpResponse {
-        self.make_markdown_response(message::WXWorkMessageMarkdownRsp { content: msg })
+        self.make_markdown_response(message::WxWorkMessageMarkdownRsp { content: msg })
     }
 
-    pub fn make_image_response(&self, msg: message::WXWorkMessageImageRsp) -> HttpResponse {
+    pub fn make_image_response(&self, msg: message::WxWorkMessageImageRsp) -> HttpResponse {
         let rsp_xml = match message::pack_image_message(msg) {
             Ok(x) => x,
             Err(e) => {

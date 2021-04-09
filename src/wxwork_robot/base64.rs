@@ -13,7 +13,7 @@ impl<'a, 'b> fmt::Debug for Engine<'a, 'b> {
         write!(
             f,
             "base64::Engine\n\tencode_map: {}\n\tdecode_map: {}\n\tpadding_char: {}",
-            String::from_iter(self.encode_map.into_iter()),
+            String::from_iter(self.encode_map.iter()),
             hex::encode(self.decode_map.as_ref()),
             if self.padding_char == '\0' {
                 '-'
@@ -113,7 +113,7 @@ impl<'a, 'b> Engine<'a, 'b> {
             }
         }
 
-        return Ok(ret);
+        Ok(ret)
     }
 
     #[allow(non_snake_case, dead_code)]
@@ -126,9 +126,9 @@ impl<'a, 'b> Engine<'a, 'b> {
         }
 
         /* First pass: check for validity and get output length */
-        for i in 0..input_len {
+        for c in input_bytes.iter().take(input_len) {
             // skip space
-            let C1 = input_bytes[i] as char;
+            let C1 = (*c) as char;
             if C1 == ' ' || C1 == '\t' || C1 == '\r' || C1 == '\n' {
                 continue;
             }
@@ -141,9 +141,9 @@ impl<'a, 'b> Engine<'a, 'b> {
         let mut n: usize = 0;
         let mut block_len: i32 = 3;
 
-        for i in 0..input_len {
+        for (i, c) in input_bytes.iter().enumerate().take(input_len) {
             // skip space
-            let C1 = input_bytes[i] as char;
+            let C1 = (*c) as char;
             if C1 == ' ' || C1 == '\t' || C1 == '\r' || C1 == '\n' {
                 continue;
             }
@@ -198,7 +198,7 @@ impl<'a, 'b> Engine<'a, 'b> {
             ret.push(((x >> 2) & 0xFF) as u8);
         }
 
-        return Ok(ret);
+        Ok(ret)
     }
 }
 

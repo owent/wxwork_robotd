@@ -14,23 +14,23 @@ use regex::{Regex, RegexBuilder};
 use super::base64;
 
 #[derive(Debug, Clone)]
-pub struct WXWorkMessageDec {
+pub struct WxWorkMessageDec {
     pub content: String,
     pub receiveid: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkMessageFrom {
+pub struct WxWorkMessageFrom {
     pub user_id: String,
     pub name: String,
     pub alias: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkMessageNtf {
+pub struct WxWorkMessageNtf {
     pub web_hook_key: String,
     pub web_hook_url: String,
-    pub from: WXWorkMessageFrom,
+    pub from: WxWorkMessageFrom,
     pub msg_type: String,
     pub content: String,
     pub image_url: String,
@@ -46,19 +46,19 @@ pub struct WXWorkMessageNtf {
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkMessageTextRsp {
+pub struct WxWorkMessageTextRsp {
     pub content: String,
     pub mentioned_list: Vec<String>,
     pub mentioned_mobile_list: Vec<u64>,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkMessageMarkdownRsp {
+pub struct WxWorkMessageMarkdownRsp {
     pub content: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct WXWorkMessageImageRsp {
+pub struct WxWorkMessageImageRsp {
     pub content: Vec<u8>,
 }
 
@@ -77,18 +77,16 @@ pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
     let mut buf = Vec::new();
     loop {
         match reader.read_event(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name() {
-                b"Encrypt" => {
+            Ok(Event::Start(ref e)) => {
+                if let b"Encrypt" = e.name() {
                     is_msg_field = true;
                 }
-                _ => (),
-            },
-            Ok(Event::End(ref e)) => match e.name() {
-                b"Encrypt" => {
+            }
+            Ok(Event::End(ref e)) => {
+                if let b"Encrypt" = e.name() {
                     is_msg_field = false;
                 }
-                _ => (),
-            },
+            }
             Ok(Event::CData(data)) => {
                 if is_msg_field {
                     if let Ok(x) = data.unescaped() {
@@ -113,8 +111,8 @@ pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
     ret
 }
 
-enum WXWorkMsgField {
-    NONE,
+enum WxWorkMsgField {
+    None,
     WebHookUrl,
     FromUserId,
     FromName,
@@ -129,11 +127,11 @@ enum WXWorkMsgField {
     EventType,
     ActionName,
     ActionValue,
-    ActionCallbackID,
+    ActionCallbackId,
     ImageUrl,
 }
 
-pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
+pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
     let mut web_hook_url = String::default();
     let mut from_user_id = String::default();
     let mut from_name = String::default();
@@ -153,7 +151,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
     let mut is_in_from = false;
     let mut is_in_event = false;
     let mut is_in_attachment = false;
-    let mut field_mode = WXWorkMsgField::NONE;
+    let mut field_mode = WxWorkMsgField::None;
 
     let mut reader = Reader::from_str(input);
     reader.trim_text(true);
@@ -165,7 +163,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                 let tag_name = e.name();
                 match tag_name {
                     b"WebhookUrl" => {
-                        field_mode = WXWorkMsgField::WebHookUrl;
+                        field_mode = WxWorkMsgField::WebHookUrl;
                         debug!("Parse get ready for WebhookUrl");
                     }
                     b"From" => {
@@ -181,74 +179,74 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         debug!("Parse get ready for Attachment");
                     }
                     b"AppVersion" => {
-                        field_mode = WXWorkMsgField::AppVersion;
+                        field_mode = WxWorkMsgField::AppVersion;
                         debug!("Parse get ready for AppVersion");
                     }
                     b"UserId" => {
                         if is_in_from {
-                            field_mode = WXWorkMsgField::FromUserId;
+                            field_mode = WxWorkMsgField::FromUserId;
                             debug!("Parse get ready for From.UserId");
                         }
                     }
                     b"Name" => {
                         if is_in_from {
-                            field_mode = WXWorkMsgField::FromName;
+                            field_mode = WxWorkMsgField::FromName;
                             debug!("Parse get ready for From.Name");
                         } else if is_in_attachment {
-                            field_mode = WXWorkMsgField::ActionName;
+                            field_mode = WxWorkMsgField::ActionName;
                             debug!("Parse get ready for Attachment.Actions.Name");
                         }
                     }
                     b"Value" => {
                         if is_in_attachment {
-                            field_mode = WXWorkMsgField::ActionValue;
+                            field_mode = WxWorkMsgField::ActionValue;
                             debug!("Parse get ready for Attachment.Actions.Value");
                         }
                     }
                     b"CallbackId" => {
                         if is_in_attachment {
-                            field_mode = WXWorkMsgField::ActionCallbackID;
+                            field_mode = WxWorkMsgField::ActionCallbackId;
                             debug!("Parse get ready for Attachment.CallbackId");
                         }
                     }
                     b"Alias" => {
                         if is_in_from {
-                            field_mode = WXWorkMsgField::FromAlias;
+                            field_mode = WxWorkMsgField::FromAlias;
                             debug!("Parse get ready for From.Alias");
                         }
                     }
                     b"EventType" => {
                         if is_in_event {
-                            field_mode = WXWorkMsgField::EventType;
+                            field_mode = WxWorkMsgField::EventType;
                             debug!("Parse get ready for Event.EventType");
                         }
                     }
                     b"MsgType" => {
-                        field_mode = WXWorkMsgField::MsgType;
+                        field_mode = WxWorkMsgField::MsgType;
                         debug!("Parse get ready for MsgType");
                     }
                     b"Text" | b"Markdown" => {
-                        field_mode = WXWorkMsgField::Content;
+                        field_mode = WxWorkMsgField::Content;
                         debug!("Parse get ready for Content");
                     }
                     b"ImageUrl" => {
-                        field_mode = WXWorkMsgField::ImageUrl;
+                        field_mode = WxWorkMsgField::ImageUrl;
                         debug!("Parse get ready for ImageUrl");
                     }
                     b"MsgId" => {
-                        field_mode = WXWorkMsgField::MsgId;
+                        field_mode = WxWorkMsgField::MsgId;
                         debug!("Parse get ready for MsgId");
                     }
                     b"GetChatInfoUrl" => {
-                        field_mode = WXWorkMsgField::GetChatInfoUrl;
+                        field_mode = WxWorkMsgField::GetChatInfoUrl;
                         debug!("Parse get ready for GetChatInfoUrl");
                     }
                     b"ChatId" => {
-                        field_mode = WXWorkMsgField::ChatId;
+                        field_mode = WxWorkMsgField::ChatId;
                         debug!("Parse get ready for ChatId");
                     }
                     b"ChatType" => {
-                        field_mode = WXWorkMsgField::ChatType;
+                        field_mode = WxWorkMsgField::ChatType;
                         debug!("Parse get ready for ChatType");
                     }
                     any => {
@@ -265,8 +263,8 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
             }
             Ok(Event::End(ref e)) => match e.name() {
                 b"WebhookUrl" => {
-                    if let WXWorkMsgField::WebHookUrl = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::WebHookUrl = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for WebhookUrl");
                     }
                 }
@@ -283,103 +281,103 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     debug!("Parse close for Attachment");
                 }
                 b"AppVersion" => {
-                    if let WXWorkMsgField::AppVersion = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::AppVersion = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for AppVersion");
                     }
                 }
                 b"UserId" => {
                     if is_in_from {
-                        if let WXWorkMsgField::FromUserId = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::FromUserId = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for From.UserId");
                         }
                     }
                 }
                 b"Name" => {
                     if is_in_from {
-                        if let WXWorkMsgField::FromName = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::FromName = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for From.Name");
                         }
                     } else if is_in_attachment {
-                        if let WXWorkMsgField::ActionName = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::ActionName = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for Attachment.Actions.Name");
                         }
                     }
                 }
                 b"Value" => {
                     if is_in_attachment {
-                        if let WXWorkMsgField::ActionValue = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::ActionValue = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for Attachment.Actions.Value");
                         }
                     }
                 }
                 b"CallbackId" => {
                     if is_in_attachment {
-                        if let WXWorkMsgField::ActionCallbackID = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::ActionCallbackId = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for Attachment.CallbackId");
                         }
                     }
                 }
                 b"Alias" => {
                     if is_in_from {
-                        if let WXWorkMsgField::FromAlias = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::FromAlias = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for From.Alias");
                         }
                     }
                 }
                 b"EventType" => {
                     if is_in_event {
-                        if let WXWorkMsgField::EventType = field_mode {
-                            field_mode = WXWorkMsgField::NONE;
+                        if let WxWorkMsgField::EventType = field_mode {
+                            field_mode = WxWorkMsgField::None;
                             debug!("Parse close for Event.EventType");
                         }
                     }
                 }
                 b"MsgType" => {
-                    if let WXWorkMsgField::MsgType = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::MsgType = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for MsgType");
                     }
                 }
                 b"Text" | b"Markdown" => {
-                    if let WXWorkMsgField::Content = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::Content = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for Content");
                     }
                 }
                 b"ImageUrl" => {
-                    if let WXWorkMsgField::ImageUrl = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::ImageUrl = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for ImageUrl");
                     }
                 }
                 b"MsgId" => {
-                    if let WXWorkMsgField::MsgId = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::MsgId = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for MsgId");
                     }
                 }
                 b"GetChatInfoUrl" => {
-                    if let WXWorkMsgField::GetChatInfoUrl = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::GetChatInfoUrl = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for GetChatInfoUrl");
                     }
                 }
                 b"ChatId" => {
-                    if let WXWorkMsgField::ChatId = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::ChatId = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for ChatId");
                     }
                 }
                 b"ChatType" => {
-                    if let WXWorkMsgField::ChatType = field_mode {
-                        field_mode = WXWorkMsgField::NONE;
+                    if let WxWorkMsgField::ChatType = field_mode {
+                        field_mode = WxWorkMsgField::None;
                         debug!("Parse close for ChatType");
                     }
                 }
@@ -394,9 +392,9 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                     );
                 }
             },
-            Ok(Event::CData(data)) | Ok(Event::Text(data)) => loop {
-                if let WXWorkMsgField::NONE = field_mode {
-                    break;
+            Ok(Event::CData(data)) | Ok(Event::Text(data)) => {
+                if let WxWorkMsgField::None = field_mode {
+                    continue;
                 }
 
                 let data_str_opt = if let Ok(x) = data.unescaped() {
@@ -414,71 +412,71 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                 let data_str = if let Some(x) = data_str_opt {
                     x
                 } else {
-                    break;
+                    continue;
                 };
 
                 match field_mode {
-                    WXWorkMsgField::WebHookUrl => {
+                    WxWorkMsgField::WebHookUrl => {
                         web_hook_url = data_str;
                         debug!("Parse data for WebhookUrl");
                     }
-                    WXWorkMsgField::FromUserId => {
+                    WxWorkMsgField::FromUserId => {
                         from_user_id = data_str;
                         debug!("Parse data for From.UserId");
                     }
-                    WXWorkMsgField::FromName => {
+                    WxWorkMsgField::FromName => {
                         from_name = data_str;
                         debug!("Parse data for From.Name");
                     }
-                    WXWorkMsgField::FromAlias => {
+                    WxWorkMsgField::FromAlias => {
                         from_alias = data_str;
                         debug!("Parse data for From.Alias");
                     }
-                    WXWorkMsgField::MsgType => {
+                    WxWorkMsgField::MsgType => {
                         msg_type = data_str;
                         debug!("Parse data for MsgType");
                     }
-                    WXWorkMsgField::Content => {
+                    WxWorkMsgField::Content => {
                         content = data_str;
                         debug!("Parse data for Content");
                     }
-                    WXWorkMsgField::ImageUrl => {
+                    WxWorkMsgField::ImageUrl => {
                         image_url = data_str;
                         debug!("Parse data for ImageUrl");
                     }
-                    WXWorkMsgField::MsgId => {
+                    WxWorkMsgField::MsgId => {
                         msg_id = data_str;
                         debug!("Parse data for MsgId");
                     }
-                    WXWorkMsgField::GetChatInfoUrl => {
+                    WxWorkMsgField::GetChatInfoUrl => {
                         get_chat_info_url = data_str;
                         debug!("Parse data for GetChatInfoUrl");
                     }
-                    WXWorkMsgField::ChatId => {
+                    WxWorkMsgField::ChatId => {
                         chat_id = data_str;
                         debug!("Parse data for ChatId");
                     }
-                    WXWorkMsgField::ChatType => {
+                    WxWorkMsgField::ChatType => {
                         chat_type = data_str;
                         debug!("Parse data for ChatId");
                     }
-                    WXWorkMsgField::AppVersion => {
+                    WxWorkMsgField::AppVersion => {
                         app_version = data_str;
                         debug!("Parse data for ChatId");
                     }
-                    WXWorkMsgField::EventType => {
+                    WxWorkMsgField::EventType => {
                         event_type = data_str;
                         debug!("Parse data for ChatId");
                     }
-                    WXWorkMsgField::ActionCallbackID => {
+                    WxWorkMsgField::ActionCallbackId => {
                         action_callbackid = data_str;
                         debug!("Parse data for ChatId");
                     }
-                    WXWorkMsgField::ActionName => {
+                    WxWorkMsgField::ActionName => {
                         action_name = data_str;
                         debug!("Parse data for ChatId");
                     }
-                    WXWorkMsgField::ActionValue => {
+                    WxWorkMsgField::ActionValue => {
                         action_value = data_str;
                         debug!("Parse data for ChatId");
                     }
@@ -486,9 +484,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
                         debug!("Ignore data {}", data_str);
                     }
                 }
-
-                break;
-            },
+            }
             Err(e) => error!("Error at position {}: {:?}", reader.buffer_position(), e),
             Ok(Event::Eof) => break,
             _ => {}
@@ -506,7 +502,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         String::default()
     };
 
-    if 0 == web_hook_key.len() {
+    if web_hook_key.is_empty() {
         error!("We can not get robot key from {}", web_hook_url);
     }
 
@@ -514,53 +510,67 @@ pub fn get_msg_from_str(input: &str) -> Option<WXWorkMessageNtf> {
         msg_type = String::from("mixed");
     }
 
-    Some(WXWorkMessageNtf {
-        web_hook_key: web_hook_key,
-        web_hook_url: web_hook_url,
-        from: WXWorkMessageFrom {
+    Some(WxWorkMessageNtf {
+        web_hook_key,
+        web_hook_url,
+        from: WxWorkMessageFrom {
             user_id: from_user_id,
             name: from_name,
             alias: from_alias,
         },
-        msg_type: msg_type,
-        content: content,
-        image_url: image_url,
-        msg_id: msg_id,
-        chat_id: chat_id,
-        chat_type: chat_type,
-        get_chat_info_url: get_chat_info_url,
-        app_version: app_version,
-        event_type: event_type,
-        action_name: action_name,
-        action_value: action_value,
-        action_callbackid: action_callbackid,
+        msg_type,
+        content,
+        image_url,
+        msg_id,
+        chat_id,
+        chat_type,
+        get_chat_info_url,
+        app_version,
+        event_type,
+        action_name,
+        action_value,
+        action_callbackid,
     })
 }
 
-pub fn pack_text_message(msg: WXWorkMessageTextRsp) -> Result<String, String> {
+pub fn pack_text_message(msg: WxWorkMessageTextRsp) -> Result<String, String> {
     debug!("{:?}", msg);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
-    if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgType"))) {
+    if writer
+        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .is_ok()
+    {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgType")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::Text(BytesText::from_plain_str("text")));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Text"))) {
-            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Content"))) {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"Text")))
+            .is_ok()
+        {
+            if writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"Content")))
+                .is_ok()
+            {
                 let _ = writer.write_event(Event::CData(BytesText::from_plain_str(
                     msg.content.as_str(),
                 )));
                 let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Content")));
             }
 
-            if let Ok(_) =
-                writer.write_event(Event::Start(BytesStart::borrowed_name(b"MentionedList")))
+            if writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"MentionedList")))
+                .is_ok()
             {
                 for v in msg.mentioned_list {
-                    if let Ok(_) =
-                        writer.write_event(Event::Start(BytesStart::borrowed_name(b"Item")))
+                    if writer
+                        .write_event(Event::Start(BytesStart::borrowed_name(b"Item")))
+                        .is_ok()
                     {
                         let _ =
                             writer.write_event(Event::CData(BytesText::from_plain_str(v.as_str())));
@@ -570,12 +580,16 @@ pub fn pack_text_message(msg: WXWorkMessageTextRsp) -> Result<String, String> {
                 let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MentionedList")));
             }
 
-            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(
-                b"MentionedMobileList",
-            ))) {
+            if writer
+                .write_event(Event::Start(BytesStart::borrowed_name(
+                    b"MentionedMobileList",
+                )))
+                .is_ok()
+            {
                 for v in msg.mentioned_mobile_list {
-                    if let Ok(_) =
-                        writer.write_event(Event::Start(BytesStart::borrowed_name(b"Item")))
+                    if writer
+                        .write_event(Event::Start(BytesStart::borrowed_name(b"Item")))
+                        .is_ok()
                     {
                         let _ = writer.write_event(Event::CData(BytesText::from_plain_str(
                             v.to_string().as_str(),
@@ -597,18 +611,30 @@ pub fn pack_text_message(msg: WXWorkMessageTextRsp) -> Result<String, String> {
     }
 }
 
-pub fn pack_markdown_message(msg: WXWorkMessageMarkdownRsp) -> Result<String, String> {
+pub fn pack_markdown_message(msg: WxWorkMessageMarkdownRsp) -> Result<String, String> {
     debug!("{:?}", msg);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
-    if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgType"))) {
+    if writer
+        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .is_ok()
+    {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgType")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::Text(BytesText::from_plain_str("markdown")));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Markdown"))) {
-            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Content"))) {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"Markdown")))
+            .is_ok()
+        {
+            if writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"Content")))
+                .is_ok()
+            {
                 // BytesText::from_escaped_str
                 let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
                     msg.content.as_str(),
@@ -627,18 +653,30 @@ pub fn pack_markdown_message(msg: WXWorkMessageMarkdownRsp) -> Result<String, St
     }
 }
 
-pub fn pack_image_message(msg: WXWorkMessageImageRsp) -> Result<String, String> {
+pub fn pack_image_message(msg: WxWorkMessageImageRsp) -> Result<String, String> {
     debug!("{:?}", msg);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
-    if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgType"))) {
+    if writer
+        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .is_ok()
+    {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgType")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::CData(BytesText::from_plain_str("image")));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Image"))) {
-            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Base64"))) {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"Image")))
+            .is_ok()
+        {
+            if writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"Base64")))
+                .is_ok()
+            {
                 // BytesText::from_escaped_str
                 let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
                     match base64::STANDARD.encode(&msg.content) {
@@ -652,7 +690,10 @@ pub fn pack_image_message(msg: WXWorkMessageImageRsp) -> Result<String, String> 
             let mut hasher = Md5::new();
             hasher.update(&msg.content);
 
-            if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Md5"))) {
+            if writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"Md5")))
+                .is_ok()
+            {
                 // BytesText::from_escaped_str
                 let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
                     hex::encode(hasher.finalize().as_slice()).as_str(),
@@ -679,13 +720,21 @@ pub fn pack_message_response(
 ) -> Result<String, String> {
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
-    if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Encrypt"))) {
+    if writer
+        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .is_ok()
+    {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"Encrypt")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::CData(BytesText::from_plain_str(encrypt.as_str())));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Encrypt")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"MsgSignature")))
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgSignature")))
+            .is_ok()
         {
             let _ = writer.write_event(Event::CData(BytesText::from_plain_str(
                 msg_signature.as_str(),
@@ -693,12 +742,18 @@ pub fn pack_message_response(
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgSignature")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"TimeStamp"))) {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"TimeStamp")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::Text(BytesText::from_plain_str(timestamp.as_str())));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"TimeStamp")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"Nonce"))) {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"Nonce")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::CData(BytesText::from_plain_str(nonce.as_str())));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Nonce")));
         }
@@ -722,13 +777,22 @@ pub fn get_robot_response_access_deny_content(msg: &str) -> String {
     error!("[Response Error]: {}", msg);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
-    if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"xml"))) {
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"message"))) {
+    if writer
+        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .is_ok()
+    {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"message")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::CData(BytesText::from_plain_str(msg)));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"message")));
         }
 
-        if let Ok(_) = writer.write_event(Event::Start(BytesStart::borrowed_name(b"code"))) {
+        if writer
+            .write_event(Event::Start(BytesStart::borrowed_name(b"code")))
+            .is_ok()
+        {
             let _ = writer.write_event(Event::Text(BytesText::from_plain_str("Access Deny")));
             let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"code")));
         }

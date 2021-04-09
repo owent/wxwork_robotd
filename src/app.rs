@@ -1,6 +1,5 @@
 extern crate clap;
 use clap::{App, Arg, ArgMatches};
-use serde_json;
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use std::net::ToSocketAddrs;
@@ -9,9 +8,9 @@ use std::process;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use super::wxwork_robot::command::{WXWorkCommandList, WXWorkCommandMatch, WXWorkCommandPtr};
-use super::wxwork_robot::project::WXWorkProject;
-use super::wxwork_robot::{build_project_set_shared, WXWorkProjectSet, WXWorkProjectSetShared};
+use super::wxwork_robot::command::{WxWorkCommandList, WxWorkCommandMatch, WxWorkCommandPtr};
+use super::wxwork_robot::project::WxWorkProject;
+use super::wxwork_robot::{build_project_set_shared, WxWorkProjectSet, WxWorkProjectSetShared};
 
 #[derive(Debug, Clone)]
 pub struct AppConfigure {
@@ -50,7 +49,7 @@ struct AppEnvironmentInfo {
     pub log_rotate: i32,
     pub log_rotate_size: usize,
     pub pid_file: Option<String>,
-    pub projects: Option<WXWorkProjectSetShared>,
+    pub projects: Option<WxWorkProjectSetShared>,
     pub conf: AppConfigure,
 }
 
@@ -172,10 +171,10 @@ pub fn app() -> AppEnvironment {
         if let Some(mut x) = matches.values_of("prefix") {
             if let Some(val) = x.next() {
                 let mut val_str = String::from(val);
-                if !val_str.starts_with("/") {
+                if !val_str.starts_with('/') {
                     val_str.insert(0, '/');
                 }
-                if !val_str.ends_with("/") {
+                if !val_str.ends_with('/') {
                     val_str.push('/');
                 }
                 APP_ENV_INFO_STORE.prefix = Some(val_str);
@@ -386,8 +385,8 @@ impl AppEnvironment {
         ret
     }
 
-    pub fn get_projects(&self) -> Option<WXWorkProjectSetShared> {
-        let ret: Option<WXWorkProjectSetShared>;
+    pub fn get_projects(&self) -> Option<WxWorkProjectSetShared> {
+        let ret: Option<WxWorkProjectSetShared>;
         unsafe {
             ret = if let Some(ref x) = APP_ENV_INFO_STORE.projects {
                 Some(x.clone())
@@ -399,10 +398,10 @@ impl AppEnvironment {
         ret
     }
 
-    pub fn set_projects(&self, val: WXWorkProjectSetShared) {
+    pub fn set_projects(&self, val: WxWorkProjectSetShared) {
         {
             if let Ok(x) = val.lock() {
-                let ref_x: &WXWorkProjectSet = &*x;
+                let ref_x: &WxWorkProjectSet = &*x;
                 for (k, _) in ref_x.projs.iter() {
                     info!("load project \"{}\" success", k);
                 }
@@ -422,7 +421,7 @@ impl AppEnvironment {
         }
     }
 
-    pub fn get_project(&self, name: &str) -> Option<Arc<WXWorkProject>> {
+    pub fn get_project(&self, name: &str) -> Option<Arc<WxWorkProject>> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
                 if let Some(found_proj) = (*x).projs.get(name) {
@@ -438,10 +437,10 @@ impl AppEnvironment {
         &self,
         message: &str,
         allow_hidden: bool,
-    ) -> Option<(WXWorkCommandPtr, WXWorkCommandMatch)> {
+    ) -> Option<(WxWorkCommandPtr, WxWorkCommandMatch)> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                return WXWorkProject::try_capture_commands(&(*x).cmds, message, allow_hidden);
+                return WxWorkProject::try_capture_commands(&(*x).cmds, message, allow_hidden);
             }
         }
 
@@ -452,10 +451,10 @@ impl AppEnvironment {
         &self,
         message: &str,
         allow_hidden: bool,
-    ) -> Option<(WXWorkCommandPtr, WXWorkCommandMatch)> {
+    ) -> Option<(WxWorkCommandPtr, WxWorkCommandMatch)> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                return WXWorkProject::try_capture_commands(&(*x).events, message, allow_hidden);
+                return WxWorkProject::try_capture_commands(&(*x).events, message, allow_hidden);
             }
         }
 
@@ -465,7 +464,7 @@ impl AppEnvironment {
     /// Get global command list.
     ///
     /// **This is a high cost API**
-    pub fn get_global_command_list(&self) -> Rc<WXWorkCommandList> {
+    pub fn get_global_command_list(&self) -> Rc<WxWorkCommandList> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
                 return (*x).cmds.clone();
@@ -617,7 +616,7 @@ impl AppEnvironment {
                 }
             }
 
-            if hosts.len() == 0 {
+            if hosts.is_empty() {
                 hosts.push(String::from("0.0.0.0:12019"));
                 hosts.push(String::from(":::12019"));
             }

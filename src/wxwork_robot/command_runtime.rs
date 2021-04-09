@@ -14,37 +14,36 @@ use tokio::time::timeout;
 use actix_web::{client, http};
 
 use handlebars::Handlebars;
-use serde_json;
 
 use super::super::app;
 use super::{command, message, project};
 
 // #[derive(Clone)]
-pub struct WXWorkCommandRuntime {
-    pub proj: project::WXWorkProjectPtr,
-    pub cmd: command::WXWorkCommandPtr,
-    pub cmd_match: command::WXWorkCommandMatch,
+pub struct WxWorkCommandRuntime {
+    pub proj: project::WxWorkProjectPtr,
+    pub cmd: command::WxWorkCommandPtr,
+    pub cmd_match: command::WxWorkCommandMatch,
     pub envs: serde_json::Value,
-    pub msg: message::WXWorkMessageNtf,
+    pub msg: message::WxWorkMessageNtf,
 }
 
 lazy_static! {
-    static ref PICK_AT_RULE: Regex = RegexBuilder::new("\\@(?P<AT>[\\B]+)")
+    static ref PICK_AT_RULE: Regex = RegexBuilder::new(r"@(?P<AT>\S+)")
         .case_insensitive(false)
         .build()
         .unwrap();
 }
 
-pub fn get_project_name_from_runtime(runtime: &Arc<WXWorkCommandRuntime>) -> Arc<String> {
+pub fn get_project_name_from_runtime(runtime: &Arc<WxWorkCommandRuntime>) -> Arc<String> {
     runtime.proj.name()
 }
 
-pub fn get_command_name_from_runtime(runtime: &Arc<WXWorkCommandRuntime>) -> Arc<String> {
+pub fn get_command_name_from_runtime(runtime: &Arc<WxWorkCommandRuntime>) -> Arc<String> {
     runtime.cmd.name()
 }
 
 // #[allow(unused)]
-pub async fn run(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
+pub async fn run(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
     debug!(
         "dispatch for command \"{}\"({})",
         runtime.cmd.name(),
@@ -52,29 +51,29 @@ pub async fn run(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
     );
 
     match runtime.cmd.data {
-        command::WXWorkCommandData::ECHO(_) => run_echo(runtime).await,
-        command::WXWorkCommandData::HTTP(_) => run_http(runtime).await,
-        command::WXWorkCommandData::HELP(_) => run_help(runtime).await,
-        command::WXWorkCommandData::SPAWN(_) => run_spawn(runtime).await,
-        command::WXWorkCommandData::IGNORE => run_ignore(runtime).await,
+        command::WxWorkCommandData::Echo(_) => run_echo(runtime).await,
+        command::WxWorkCommandData::Http(_) => run_http(runtime).await,
+        command::WxWorkCommandData::Help(_) => run_help(runtime).await,
+        command::WxWorkCommandData::Spawn(_) => run_spawn(runtime).await,
+        command::WxWorkCommandData::Ignore => run_ignore(runtime).await,
         // _ => run_test,
     }
 }
 
 #[allow(unused)]
-async fn run_test(_: Arc<WXWorkCommandRuntime>) -> HttpResponse {
+async fn run_test(_: Arc<WxWorkCommandRuntime>) -> HttpResponse {
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body("test success")
 }
 
-async fn run_ignore(_: Arc<WXWorkCommandRuntime>) -> HttpResponse {
+async fn run_ignore(_: Arc<WxWorkCommandRuntime>) -> HttpResponse {
     message::make_robot_empty_response()
 }
 
-async fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
+async fn run_help(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
     let (echo_prefix, echo_suffix) =
-        if let command::WXWorkCommandData::HELP(ref x) = runtime.cmd.data {
+        if let command::WxWorkCommandData::Help(ref x) = runtime.cmd.data {
             (x.prefix.clone(), x.suffix.clone())
         } else {
             (String::default(), String::default())
@@ -82,7 +81,7 @@ async fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
 
     let mut output = String::with_capacity(4096);
     let reg = Handlebars::new();
-    if echo_prefix.len() > 0 {
+    if !echo_prefix.is_empty() {
         output += (match reg.render_template(echo_prefix.as_str(), &runtime.envs) {
             Ok(x) => x,
             Err(e) => format!("{:?}", e),
@@ -107,7 +106,7 @@ async fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
         }
     }
 
-    if echo_suffix.len() > 0 {
+    if !echo_suffix.is_empty() {
         output += (match reg.render_template(echo_suffix.as_str(), &runtime.envs) {
             Ok(x) => x,
             Err(e) => format!("{:?}", e),
@@ -120,8 +119,8 @@ async fn run_help(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
     runtime.proj.make_markdown_response_with_text(output)
 }
 
-async fn run_echo(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
-    let echo_input = if let command::WXWorkCommandData::ECHO(ref x) = runtime.cmd.data {
+async fn run_echo(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
+    let echo_input = if let command::WxWorkCommandData::Echo(ref x) = runtime.cmd.data {
         x.echo.clone()
     } else {
         String::from("Hello world!")
@@ -137,14 +136,14 @@ async fn run_echo(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
     runtime.proj.make_markdown_response_with_text(echo_output)
 }
 
-async fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
+async fn run_http(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
     let http_req_f;
     let http_url;
     let reg;
     let echo_output_tmpl_str;
 
     {
-        let http_data = if let command::WXWorkCommandData::HTTP(ref x) = runtime.cmd.data {
+        let http_data = if let command::WxWorkCommandData::Http(ref x) = runtime.cmd.data {
             x.clone()
         } else {
             return runtime
@@ -152,8 +151,8 @@ async fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
                 .make_error_response(String::from("Configure type error"));
         };
 
-        if 0 == http_data.url.len() {
-            let err_msg = format!("Missing Request URL");
+        if http_data.url.is_empty() {
+            let err_msg = "Missing Request URL".to_string();
             error!(
                 "project \"{}\" command \"{}\" {}",
                 runtime.proj.name(),
@@ -169,7 +168,7 @@ async fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
             Err(e) => format!("{:?}", e),
         };
 
-        echo_output_tmpl_str = if 0 == http_data.echo.len() {
+        echo_output_tmpl_str = if http_data.echo.is_empty() {
             String::from("Ok")
         } else {
             http_data.echo.clone()
@@ -181,26 +180,26 @@ async fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
 
         {
             let mut http_request = match http_data.method {
-                command::WXWorkCommandHttpMethod::Auto => {
-                    if post_data.len() > 0 {
+                command::WxWorkCommandHttpMethod::Auto => {
+                    if !post_data.is_empty() {
                         client::Client::default().post(http_url.as_str())
                     } else {
                         client::Client::default().get(http_url.as_str())
                     }
                 }
-                command::WXWorkCommandHttpMethod::Get => {
+                command::WxWorkCommandHttpMethod::Get => {
                     client::Client::default().get(http_url.as_str())
                 }
-                command::WXWorkCommandHttpMethod::Post => {
+                command::WxWorkCommandHttpMethod::Post => {
                     client::Client::default().post(http_url.as_str())
                 }
-                command::WXWorkCommandHttpMethod::Delete => {
+                command::WxWorkCommandHttpMethod::Delete => {
                     client::Client::default().delete(http_url.as_str())
                 }
-                command::WXWorkCommandHttpMethod::Put => {
+                command::WxWorkCommandHttpMethod::Put => {
                     client::Client::default().put(http_url.as_str())
                 }
-                command::WXWorkCommandHttpMethod::Head => {
+                command::WxWorkCommandHttpMethod::Head => {
                     client::Client::default().head(http_url.as_str())
                 }
             };
@@ -210,7 +209,7 @@ async fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
                     http::header::USER_AGENT,
                     format!("Mozilla/5.0 (WXWork-Robotd {})", crate_version!()),
                 );
-            if http_data.content_type.len() > 0 {
+            if !http_data.content_type.is_empty() {
                 http_request = http_request
                     .header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
             }
@@ -287,8 +286,8 @@ async fn run_http(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
     runtime.proj.make_markdown_response_with_text(echo_output)
 }
 
-async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
-    let spawn_data = if let command::WXWorkCommandData::SPAWN(ref x) = runtime.cmd.data {
+async fn run_spawn(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
+    let spawn_data = if let command::WxWorkCommandData::Spawn(ref x) = runtime.cmd.data {
         x.clone()
     } else {
         return runtime
@@ -347,7 +346,7 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
         }
     }
 
-    if cwd.len() > 0 {
+    if !cwd.is_empty() {
         child.current_dir(cwd);
     }
 
@@ -399,7 +398,7 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
     };
 
     let mut ret_msg = String::with_capacity(output.stdout.len() + output.stderr.len() + 32);
-    if output.stdout.len() > 0 {
+    if !output.stdout.is_empty() {
         ret_msg += (match String::from_utf8(output.stdout) {
             Ok(x) => x,
             Err(e) => hex::encode(e.as_bytes()),
@@ -407,7 +406,7 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
         .as_str();
     }
 
-    if output.stderr.len() > 0 {
+    if !output.stderr.is_empty() {
         let stderr_str = match String::from_utf8(output.stderr) {
             Ok(x) => x,
             Err(e) => hex::encode(e.as_bytes()),
@@ -424,10 +423,10 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
 
     if output.status.success() {
         match output_type {
-            command::WXWorkCommandSpawnOutputType::Markdown => {
+            command::WxWorkCommandSpawnOutputType::Markdown => {
                 runtime.proj.make_markdown_response_with_text(ret_msg)
             }
-            command::WXWorkCommandSpawnOutputType::Text => {
+            command::WxWorkCommandSpawnOutputType::Text => {
                 let mut mentioned_list: Vec<String> = Vec::new();
 
                 for caps in PICK_AT_RULE.captures_iter(ret_msg.as_str()) {
@@ -436,15 +435,15 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
                     }
                 }
 
-                let rsp = message::WXWorkMessageTextRsp {
+                let rsp = message::WxWorkMessageTextRsp {
                     content: ret_msg,
-                    mentioned_list: mentioned_list,
+                    mentioned_list,
                     mentioned_mobile_list: Vec::new(),
                 };
 
                 runtime.proj.make_text_response(rsp)
             }
-            command::WXWorkCommandSpawnOutputType::Image => {
+            command::WxWorkCommandSpawnOutputType::Image => {
                 let file_path = ret_msg.trim();
                 let mut options = OpenOptions::new();
                 options
@@ -455,7 +454,7 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
                 let mut err_msg = String::default();
                 let mut image_data: Vec<u8> = Vec::new();
 
-                if file_path.len() > 0 {
+                if !file_path.is_empty() {
                     match options.open(file_path) {
                         Ok(f) => {
                             let mut reader = BufReader::new(f);
@@ -473,16 +472,16 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
                     };
                 }
 
-                if image_data.len() > 0 {
+                if !image_data.is_empty() {
                     runtime
                         .proj
-                        .make_image_response(message::WXWorkMessageImageRsp {
+                        .make_image_response(message::WxWorkMessageImageRsp {
                             content: image_data,
                         })
                 } else {
                     runtime
                         .proj
-                        .make_text_response(message::WXWorkMessageTextRsp {
+                        .make_text_response(message::WxWorkMessageTextRsp {
                             content: err_msg,
                             mentioned_list: vec![runtime.msg.from.alias.clone()],
                             mentioned_mobile_list: Vec::new(),
@@ -493,7 +492,7 @@ async fn run_spawn(runtime: Arc<WXWorkCommandRuntime>) -> HttpResponse {
     } else {
         runtime
             .proj
-            .make_text_response(message::WXWorkMessageTextRsp {
+            .make_text_response(message::WxWorkMessageTextRsp {
                 content: ret_msg,
                 mentioned_list: vec![runtime.msg.from.alias.clone()],
                 mentioned_mobile_list: Vec::new(),

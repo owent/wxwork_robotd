@@ -89,7 +89,7 @@ def ReadMessageContent(file):
     return file
 
 
-def SendWXRobotText(url, text, mentioned_list=[], mentioned_mobile_list=[], chat_id=None):
+def SendWXRobotText(url, text, mentioned_list=[], mentioned_mobile_list=[], chat_id=None, visible_to_user=[]):
     msg = {
         "msgtype": "text",
         "text": {
@@ -101,12 +101,15 @@ def SendWXRobotText(url, text, mentioned_list=[], mentioned_mobile_list=[], chat
     if chat_id is not None and chat_id:
         msg["chatid"] = chat_id
 
+    if visible_to_user is not None and visible_to_user:
+        msg["visible_to_user"] = '|'.join(visible_to_user)
+
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
         "Content-Type": "application/json; charset=utf-8"#,
         #"Expect": "100-continue"
     }))
 
-def SendWXRobotMarkdown(url, markdown, chat_id=None):
+def SendWXRobotMarkdown(url, markdown, chat_id=None, visible_to_user=[]):
     msg = {
         "msgtype": "markdown",
         "markdown": {
@@ -116,12 +119,15 @@ def SendWXRobotMarkdown(url, markdown, chat_id=None):
     if chat_id is not None and chat_id:
         msg["chatid"] = chat_id
 
+    if visible_to_user is not None and visible_to_user:
+        msg["visible_to_user"] = '|'.join(visible_to_user)
+
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
         "Content-Type": "application/json; charset=utf-8"#,
         #"Expect": "100-continue"
     }))
 
-def SendWXRobotImage(url, image_binary, chat_id=None):
+def SendWXRobotImage(url, image_binary, chat_id=None, visible_to_user=[]):
     import base64
     import hashlib
     msg = {
@@ -134,12 +140,15 @@ def SendWXRobotImage(url, image_binary, chat_id=None):
     if chat_id is not None and chat_id:
         msg["chatid"] = chat_id
 
+    if visible_to_user is not None and visible_to_user:
+        msg["visible_to_user"] = '|'.join(visible_to_user)
+
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
         "Content-Type": "application/json; charset=utf-8"#,
         #"Expect": "100-continue"
     }))
 
-def SendWXRobotNews(url, news_list_array, chat_id=None):
+def SendWXRobotNews(url, news_list_array, chat_id=None, visible_to_user=[]):
     news_data = []
     if news_list_array is None or not news_list_array:
         news_data.append({
@@ -170,6 +179,9 @@ def SendWXRobotNews(url, news_list_array, chat_id=None):
     }
     if chat_id is not None and chat_id:
         msg["chatid"] = chat_id
+
+    if visible_to_user is not None and visible_to_user:
+        msg["visible_to_user"] = '|'.join(visible_to_user)
     
     return json.loads(SendHttpRequest(url, post_body=json.dumps(msg, indent=2).encode('utf-8'), headers={
         "Content-Type": "application/json; charset=utf-8"#,
@@ -258,6 +270,12 @@ if __name__ == '__main__':
         help="set chat id",
         dest="chat_id",
         default=None)
+    CmdArgsAddOption(parser,
+        "--visible-to-user",
+        action="append",
+        help="set visible user list(userid的列表，仅部分人可见)",
+        dest="visible_to_user",
+        default=[])
     opts = CmdArgsParse(parser)
     if opts.robot_url is None:
         print('robot-url is required\n use options -h for more details.')
@@ -267,16 +285,17 @@ if __name__ == '__main__':
     FILE_ENCODING = opts.file_encoding
     if opts.text is not None:
         has_message = True
-        print(SendWXRobotText(opts.robot_url, ReadMessageContent(opts.text), opts.mentioned_list, opts.mentioned_mobile_list, chat_id=opts.chat_id))
+        print(SendWXRobotText(opts.robot_url, ReadMessageContent(opts.text), opts.mentioned_list, opts.mentioned_mobile_list, 
+            chat_id=opts.chat_id, visible_to_user=opts.visible_to_user))
     if opts.markdown is not None:
         has_message = True
-        print(SendWXRobotMarkdown(opts.robot_url, ReadMessageContent(opts.markdown), chat_id=opts.chat_id))
+        print(SendWXRobotMarkdown(opts.robot_url, ReadMessageContent(opts.markdown), chat_id=opts.chat_id, visible_to_user=opts.visible_to_user))
     if opts.image is not None:
         has_message = True
         if not os.path.exists(opts.image):
             sys.stderr.writelines(['Image file \"{0}\" not found'.format(opts.image)])
         else:
-            print(SendWXRobotImage(opts.robot_url, open(opts.image, 'rb').read(), chat_id=opts.chat_id))
+            print(SendWXRobotImage(opts.robot_url, open(opts.image, 'rb').read(), chat_id=opts.chat_id, visible_to_user=opts.visible_to_user))
 
     news_count = max(len(opts.news_title), len(opts.news_description), len(opts.news_url), len(opts.news_picurl))
     news_list = []
@@ -297,7 +316,7 @@ if __name__ == '__main__':
 
     if news_list:
         has_message = True
-        print(SendWXRobotNews(opts.robot_url, news_list, chat_id=opts.chat_id))
+        print(SendWXRobotNews(opts.robot_url, news_list, chat_id=opts.chat_id, visible_to_user=opts.visible_to_user))
 
     if not has_message:
         print('no message send.')
