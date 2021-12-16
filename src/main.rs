@@ -22,8 +22,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate aes;
-extern crate cipher;
 extern crate block_modes;
+extern crate cipher;
 extern crate md5;
 extern crate regex;
 extern crate ring;
