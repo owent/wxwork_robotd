@@ -21,13 +21,16 @@ jobs:
     #, x86_64-pc-windows-gnu
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Setup Rust
-        uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: ${{ matrix.rust }}
-          targets: ${{ matrix.target }}
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
       - name: Build
         shell: pwsh
         run: |

@@ -50,16 +50,16 @@ jobs:
     # Github action is run under a docker pod but cross need docker service
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
           override: true
           default: true
           components: "rustfmt, clippy, cargo, rust-docs"
-      - name: Checkout
-        uses: actions/checkout@v1
       - name: Format and lint
         if: ${{ matrix.os == 'ubuntu-latest' }}
         shell: bash
