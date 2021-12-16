@@ -65,6 +65,7 @@
   * WXWORK_ROBOT_MSG_ID                     : 消息ID(版本>=0.3.6)
   * WXWORK_ROBOT_IMAGE_URL                  : 如果是图文混排和图片消息，这个指向消息内的图片地址(版本>=0.8.0)
   * WXWORK_ROBOT_GET_CHAT_INFO_URL          : 可以用于获取消息信息的URL(版本>=0.3.9)，有效期为5分钟，调用一次后失效
+  * WXWORK_ROBOT_POST_ID                    : post id(版本>=0.9.0)
   * WXWORK_ROBOT_CHAT_ID                    : chat id(版本>=0.3.9)，用于区分聊天群，如果机器人被添加到多个群，可以用这个指定主动发消息到哪个群
   * WXWORK_ROBOT_CHAT_TYPE                  : chat type(版本>=0.6.1)，对应企业微信机器人消息的ChatType字段（会话类型，single/group，分别表示：单聊\群聊话）
   * WXWORK_ROBOT_HTTP_RESPONSE              : HTTP回包(仅 ```type``` 为 http 时的echo字段可用)

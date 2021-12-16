@@ -79,25 +79,19 @@ matrix:
     #   dist: xenial
     #   sudo: required
     #   env: USING_SYSTEM_ALLOC=0 USING_CROSS=0 TARGET=x86_64-unknown-linux-gnu
-    - os: linux
-      dist: xenial
       sudo: required
       env: USING_CROSS=1 TARGET=aarch64-unknown-linux-musl
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_CROSS=1 TARGET=arm-unknown-linux-musleabihf
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_CROSS=1 TARGET=arm-unknown-linux-musleabi
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_CROSS=1 TARGET=armv7-unknown-linux-musleabihf
     # linux-musl
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=i686-unknown-linux-musl
     # - os: linux
@@ -109,33 +103,26 @@ matrix:
     #   sudo: required
     #   env: USING_CROSS=1 TARGET=mipsel-unknown-linux-musl
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-linux-musl
     # Android
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_CROSS=1 TARGET=aarch64-linux-android
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=arm-linux-androideabi
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=armv7-linux-androideabi
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=i686-linux-android
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=1 USING_CROSS=1 TARGET=x86_64-linux-android
     # BSD
     - os: linux
-      dist: xenial
       sudo: required
       env: USING_SYSTEM_ALLOC=0 USING_CROSS=1 TARGET=x86_64-unknown-netbsd
     # - os: linux

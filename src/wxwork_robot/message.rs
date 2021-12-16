@@ -35,6 +35,7 @@ pub struct WxWorkMessageNtf {
     pub content: String,
     pub image_url: String,
     pub msg_id: String,
+    pub post_id: String,
     pub chat_id: String,
     pub chat_type: String,
     pub get_chat_info_url: String,
@@ -121,6 +122,7 @@ enum WxWorkMsgField {
     Content,
     MsgId,
     GetChatInfoUrl,
+    PostId,
     ChatId,
     ChatType,
     AppVersion,
@@ -140,6 +142,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
     let mut content = String::default();
     let mut image_url = String::default();
     let mut msg_id = String::default();
+    let mut post_id = String::default();
     let mut chat_id = String::default();
     let mut chat_type = String::default();
     let mut get_chat_info_url = String::default();
@@ -240,6 +243,10 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
                     b"GetChatInfoUrl" => {
                         field_mode = WxWorkMsgField::GetChatInfoUrl;
                         debug!("Parse get ready for GetChatInfoUrl");
+                    }
+                    b"PostId" => {
+                        field_mode = WxWorkMsgField::PostId;
+                        debug!("Parse get ready for PostId");
                     }
                     b"ChatId" => {
                         field_mode = WxWorkMsgField::ChatId;
@@ -369,6 +376,12 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
                         debug!("Parse close for GetChatInfoUrl");
                     }
                 }
+                b"PostId" => {
+                    if let WxWorkMsgField::PostId = field_mode {
+                        field_mode = WxWorkMsgField::None;
+                        debug!("Parse close for PostId");
+                    }
+                }
                 b"ChatId" => {
                     if let WxWorkMsgField::ChatId = field_mode {
                         field_mode = WxWorkMsgField::None;
@@ -452,33 +465,37 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
                         get_chat_info_url = data_str;
                         debug!("Parse data for GetChatInfoUrl");
                     }
+                    WxWorkMsgField::PostId => {
+                        post_id = data_str;
+                        debug!("Parse data for PostId");
+                    }
                     WxWorkMsgField::ChatId => {
                         chat_id = data_str;
                         debug!("Parse data for ChatId");
                     }
                     WxWorkMsgField::ChatType => {
                         chat_type = data_str;
-                        debug!("Parse data for ChatId");
+                        debug!("Parse data for ChatType");
                     }
                     WxWorkMsgField::AppVersion => {
                         app_version = data_str;
-                        debug!("Parse data for ChatId");
+                        debug!("Parse data for AppVersion");
                     }
                     WxWorkMsgField::EventType => {
                         event_type = data_str;
-                        debug!("Parse data for ChatId");
+                        debug!("Parse data for EventType");
                     }
                     WxWorkMsgField::ActionCallbackId => {
                         action_callbackid = data_str;
-                        debug!("Parse data for ChatId");
+                        debug!("Parse data for ActionCallbackId");
                     }
                     WxWorkMsgField::ActionName => {
                         action_name = data_str;
-                        debug!("Parse data for ChatId");
+                        debug!("Parse data for ActionName");
                     }
                     WxWorkMsgField::ActionValue => {
                         action_value = data_str;
-                        debug!("Parse data for ChatId");
+                        debug!("Parse data for ActionValue");
                     }
                     _ => {
                         debug!("Ignore data {}", data_str);
@@ -522,6 +539,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
         content,
         image_url,
         msg_id,
+        post_id,
         chat_id,
         chat_type,
         get_chat_info_url,
@@ -838,8 +856,8 @@ mod tests {
 
     use super::*;
 
-    const WXWORKROBOT_TEST_MSG: &str = "<xml><From><UserId><![CDATA[T56650002A]]></UserId><Name><![CDATA[欧文韬]]></Name><Alias><![CDATA[owentou]]></Alias></From><WebhookUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxxxxxx]]></WebhookUrl><ChatId><![CDATA[fakechatid]]></ChatId><GetChatInfoUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/get_chat_info?code=VcgjNN2bHMhatXwG8aZbHvj_RZmLF0OSS5_sVGxYUGk]]></GetChatInfoUrl><MsgId><![CDATA[CIGABBCOgP3qBRiR4vm7goCAAyAY]]></MsgId><ChatType><![CDATA[group]]></ChatType><MsgType><![CDATA[text]]></MsgType><Text><Content><![CDATA[@fa机器人 help]]></Content></Text></xml>";
-    const WXWORKROBOT_TEST_MSG_WITH_KNOWN_DATA: &str = "<xml><unknown_field1><![CDATA[blablabla]]></unknown_field1><From><UserId><![CDATA[T56650002A]]></UserId><Name><![CDATA[欧文韬]]></Name><Alias><![CDATA[owentou]]></Alias></From><WebhookUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxxxxxx]]></WebhookUrl><ChatId><![CDATA[fakechatid]]></ChatId><unknown_field2>test_message</unknown_field2><GetChatInfoUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/get_chat_info?code=VcgjNN2bHMhatXwG8aZbHvj_RZmLF0OSS5_sVGxYUGk]]></GetChatInfoUrl><MsgId><![CDATA[CIGABBCOgP3qBRiR4vm7goCAAyAY]]></MsgId><ChatType><![CDATA[group]]></ChatType><MsgType><![CDATA[text]]></MsgType><Text><Content><![CDATA[@fa机器人 help]]></Content></Text></xml>";
+    const WXWORKROBOT_TEST_MSG: &str = "<xml><From><UserId><![CDATA[T56650002A]]></UserId><Name><![CDATA[欧文韬]]></Name><Alias><![CDATA[owentou]]></Alias></From><WebhookUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxxxxxx]]></WebhookUrl><ChatId><![CDATA[fakechatid]]></ChatId><PostId><![CDATA[fakepostid]]></PostId><GetChatInfoUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/get_chat_info?code=VcgjNN2bHMhatXwG8aZbHvj_RZmLF0OSS5_sVGxYUGk]]></GetChatInfoUrl><MsgId><![CDATA[CIGABBCOgP3qBRiR4vm7goCAAyAY]]></MsgId><ChatType><![CDATA[group]]></ChatType><MsgType><![CDATA[text]]></MsgType><Text><Content><![CDATA[@fa机器人 help]]></Content></Text></xml>";
+    const WXWORKROBOT_TEST_MSG_WITH_KNOWN_DATA: &str = "<xml><unknown_field1><![CDATA[blablabla]]></unknown_field1><From><UserId><![CDATA[T56650002A]]></UserId><Name><![CDATA[欧文韬]]></Name><Alias><![CDATA[owentou]]></Alias></From><WebhookUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxxxxxx]]></WebhookUrl><ChatId><![CDATA[fakechatid]]></ChatId><PostId><![CDATA[fakepostid]]></PostId><unknown_field2>test_message</unknown_field2><GetChatInfoUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/get_chat_info?code=VcgjNN2bHMhatXwG8aZbHvj_RZmLF0OSS5_sVGxYUGk]]></GetChatInfoUrl><MsgId><![CDATA[CIGABBCOgP3qBRiR4vm7goCAAyAY]]></MsgId><ChatType><![CDATA[group]]></ChatType><MsgType><![CDATA[text]]></MsgType><Text><Content><![CDATA[@fa机器人 help]]></Content></Text></xml>";
 
     #[test]
     fn decode_wxwork_robot_msg() {
@@ -852,6 +870,7 @@ mod tests {
             assert_eq!(msg.from.alias, "owentou");
             assert_eq!(msg.msg_id, "CIGABBCOgP3qBRiR4vm7goCAAyAY");
             assert_eq!(msg.msg_type, "text");
+            assert_eq!(msg.post_id, "fakepostid");
             assert_eq!(msg.chat_id, "fakechatid");
             assert_eq!(msg.chat_type, "group");
             assert!(msg.event_type.is_empty());
@@ -872,6 +891,7 @@ mod tests {
             assert_eq!(msg.from.alias, "owentou");
             assert_eq!(msg.msg_id, "CIGABBCOgP3qBRiR4vm7goCAAyAY");
             assert_eq!(msg.msg_type, "text");
+            assert_eq!(msg.post_id, "fakepostid");
             assert_eq!(msg.chat_id, "fakechatid");
             assert_eq!(msg.chat_type, "group");
             assert!(msg.event_type.is_empty());
@@ -882,6 +902,7 @@ mod tests {
     }
     const WXWORKROBOT_TEST_MSG_EVENT: &str = r#"<xml>
         <WebhookUrl> <![CDATA[https://qyapi.weixin.qq.com/xxxxxxx]]></WebhookUrl>
+        <PostId><![CDATA[bpkSFfCgAAWeiHos2p6lJbG3_F2xxxxx]]></PostId>
         <ChatId><![CDATA[wrkSFfCgAALFgnrSsWU38puiv4yvExuw]]></ChatId>
         <ChatType>single</ChatType>
         <GetChatInfoUrl><![CDATA[https://qyapi.weixin.qq.com/cgi-bin/webhook/get_chat_info?code=m49c5aRCdEP8_QQdZmTNR52yJ5TLGcIMzaLJk3x5KqY]]></GetChatInfoUrl>
@@ -909,6 +930,7 @@ mod tests {
             assert_eq!(msg.from.alias, "jackzhang");
             assert_eq!(msg.msg_id, "abcdabcdabcd");
             assert_eq!(msg.msg_type, "event");
+            assert_eq!(msg.post_id, "bpkSFfCgAAWeiHos2p6lJbG3_F2xxxxx");
             assert_eq!(msg.chat_id, "wrkSFfCgAALFgnrSsWU38puiv4yvExuw");
             assert_eq!(msg.chat_type, "single");
             assert_eq!(msg.event_type, "add_to_chat");
@@ -921,6 +943,7 @@ mod tests {
 
     const WXWORKROBOT_TEST_MSG_ATTACHMENT: &str = r#"<xml>
         <WebhookUrl><![CDATA[http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxx]]></WebhookUrl>
+        <PostId><![CDATA[yyyyy]]></PostId>
         <ChatId><![CDATA[xxxxx]]></ChatId>
         <ChatType>single</ChatType>
         <From>
@@ -950,6 +973,7 @@ mod tests {
             assert_eq!(msg.from.alias, "zhangsan");
             assert_eq!(msg.msg_id, "xxxxx");
             assert_eq!(msg.msg_type, "attachment");
+            assert_eq!(msg.post_id, "yyyyy");
             assert_eq!(msg.chat_id, "xxxxx");
             assert_eq!(msg.chat_type, "single");
             assert!(msg.event_type.is_empty());

@@ -265,6 +265,8 @@ async fn dispatch_robot_message(
         serde_json::Value::String(msg_ntf.image_url.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_GET_CHAT_INFO_URL"] =
         serde_json::Value::String(msg_ntf.get_chat_info_url.clone());
+    cmd_match_res.mut_json()["WXWORK_ROBOT_POST_ID"] =
+        serde_json::Value::String(msg_ntf.post_id.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_CHAT_ID"] =
         serde_json::Value::String(msg_ntf.chat_id.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_CHAT_TYPE"] =
@@ -297,10 +299,10 @@ async fn dispatch_robot_message(
 
 #[cfg(test)]
 mod tests {
-
     use super::super::super::wxwork_robot::base64;
     use super::super::super::wxwork_robot::message;
     use super::super::super::wxwork_robot::project::WxWorkProject;
+    use actix_web::web;
 
     const WXWORKROBOT_TEST_MSG_ORIGIN: &[u8] = b"<xml><Encrypt><![CDATA[FwydeYOgYQZ9k+kVyzxq0dnB4a/Pwn3MefyybYcZbsRJho83qzw1/UCX/5jlBxDxiPPOY1ai/f7x+dorMGFNweLsJxNiWT27Ov3eOWLuJrNmbDWt27KwnIeT4tgA5uzDVIZd8jF6i7GUD+kK2VuZe+wHu8TsCTDOngMJJ9bnDjzdCtgpgklm3jSgF4A+VViq2mPcEOcHfWsYOcjJLiiGggLI1xIIZqag/o8xw4HFi+O9R8E3wbWtnMyHSih+oW3ES+tHdv0nnYx6JqvTPMMZIQiNMx9AVyDn4ps88bEppHUw+Cda5/Uk6EwMGPCr/AMdBVFTtJow+CUyoO4T6g821v7hwivkxPEMsOUz6cSir4M5W7lRXkSTcyHuadr1V7fjR7luVLqA4sR6JTQEUBkude7kn1GX9JdJkddqqgZInX4hBXIPJ4h5UmJLxWUADrH8sPIpu32shvFEmzEcftcobgDIxBj9vhXBn9MfaiOYGMAAfQ3TZ0Cb9HmDW/hnA2RY1bHTf+UK7dSK+DyaVwgsmGfZsRhfpShCAvuRnOKUx1JWRDwEHyv5VxdCozPoOk4fjyLVB4HHigyd/jfuc3CYqGtJ+Gn0aKc8zqVgTHgS9q3LkfcalcFJ2pVGCRYGW8mTyTcjW627RhzYWN5qmzbFQzRHMBh8Z/9zdSmW+VxNOHfNZaLR5TPfITSDKeHH1NrISm06Xf3wjyRpUvt6t6BAsFfPJid44XjRgWk2tlmoTo7yDT24uZWWOIuczWsicXbMOWJjkJ3dSKopyfewF61MHcTHp8M3KcbAL1/48kP5vM2Gqp6WBrkAgJu17BJYqRn2yopNmCZdY5H4Hdfl9Eq+/MEUZsZS8NBVAkVgjYlP4p1eWKJFiKQohQWVAEgGWWVBED+52QrKZqmXgdVfQ3UzuHHheNrBf5y94b1wlU3crBh/Gpi1yYOd7UReYnmo4uOth1sSwcqQO1Fe+lUkW3JCbw==]]></Encrypt></xml>";
     const WXWORKROBOT_TEST_MSG_REPLY: &str = "<xml><MsgType><![CDATA[markdown]]></MsgType><Markdown><Content><![CDATA[啦啦啦热热热]]></Content></Markdown></xml>";
@@ -308,7 +310,7 @@ mod tests {
     #[test]
     fn project_decode_and_verify() {
         let encrypt_msg_b64_res =
-            message::get_msg_encrypt_from_bytes(bytes::Bytes::from(WXWORKROBOT_TEST_MSG_ORIGIN));
+            message::get_msg_encrypt_from_bytes(web::Bytes::from(WXWORKROBOT_TEST_MSG_ORIGIN));
         assert!(encrypt_msg_b64_res.is_some());
 
         let json_value = serde_json::from_str("{ \"name\": \"test_proj\", \"token\": \"hJqcu3uJ9Tn2gXPmxx2w9kkCkCE2EPYo\", \"encodingAESKey\": \"6qkdMrq68nTKduznJYO1A37W2oEgpkMUvkttRToqhUt\", \"cmds\": {} }").unwrap();

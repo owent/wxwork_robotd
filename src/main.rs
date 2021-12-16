@@ -22,7 +22,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate aes;
-extern crate block_cipher;
+extern crate cipher;
 extern crate block_modes;
 extern crate md5;
 extern crate regex;

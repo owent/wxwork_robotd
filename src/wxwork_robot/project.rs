@@ -1,6 +1,6 @@
 use actix_web::HttpResponse;
 use aes::Aes256;
-// use block_cipher::{BlockCipher, NewBlockCipher};
+// use cipher::{BlockCipher, NewBlockCipher};
 use block_modes::block_padding::NoPadding;
 use block_modes::{BlockMode, Cbc};
 use byteorder::{BigEndian, ByteOrder};
@@ -20,7 +20,6 @@ type Aes256CbcNoPadding = Cbc<Aes256, NoPadding>;
 
 // #[derive(Clone)]
 struct WxWorkProjectCipherInfo {
-    pub cipher: Aes256CbcNoPadding,
     pub key: Vec<u8>,
     pub iv: Vec<u8>,
 }
@@ -205,7 +204,7 @@ impl WxWorkProject {
         } else {
             Vec::new()
         };
-        let cipher_ctx = match Aes256CbcNoPadding::new_var(&aes_key_bin, &cipher_iv) {
+        let _ = match Aes256CbcNoPadding::new_from_slices(&aes_key_bin, &cipher_iv) {
             Ok(x) => x,
             Err(e) => {
                 let err_msg = format!(
@@ -218,14 +217,6 @@ impl WxWorkProject {
             }
         };
 
-        /*
-        let cipher_iv = if let Some(x) = cipher_ctx.iv_len() {
-            Vec::from(&aes_key_bin[0..x])
-        } else {
-            Vec::new()
-        };
-        */
-
         debug!(
             "project \"{}\" load aes key: \"{}\", iv: \"{}\", block size: {}",
             proj_name,
@@ -235,7 +226,6 @@ impl WxWorkProject {
         );
 
         let cipher_info = WxWorkProjectCipherInfo {
-            cipher: cipher_ctx,
             key: aes_key_bin,
             iv: cipher_iv,
         };
@@ -361,7 +351,7 @@ impl WxWorkProject {
         match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                decrypter = match Aes256CbcNoPadding::new_var(&ci.key, &ci.iv) {
+                decrypter = match Aes256CbcNoPadding::new_from_slices(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
@@ -373,8 +363,6 @@ impl WxWorkProject {
                         return Err(ret);
                     }
                 };
-                // decrypter = ci.cipher.clone();
-                // block_size = ci.cipher.block_size();
             }
             Err(e) => {
                 let ret = format!(
@@ -562,7 +550,7 @@ impl WxWorkProject {
         match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                encrypter = match Aes256CbcNoPadding::new_var(&ci.key, &ci.iv) {
+                encrypter = match Aes256CbcNoPadding::new_from_slices(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
@@ -574,25 +562,6 @@ impl WxWorkProject {
                         return Err(ret);
                     }
                 };
-                // encrypter = ci.cipher.clone();
-                /*
-                encrypter = match Crypter::new(ci.cipher, Mode::Encrypt, &ci.key, Some(&ci.iv)) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        let ret = format!(
-                            "project \"{}\" create Crypter for encrypt {} with key={} iv={} failed\n{:?}",
-                            self.name(),
-                            hex::encode(input),
-                            hex::encode(&ci.key),
-                            hex::encode(&ci.iv),
-                            e
-                        );
-                        debug!("{}", ret);
-                        return Err(ret);
-                    }
-                };
-                block_size = ci.cipher.block_size();
-                */
             }
             Err(e) => {
                 let ret = format!(
@@ -607,41 +576,6 @@ impl WxWorkProject {
 
         let ret = encrypter.encrypt_vec(&padded_input);
         Ok(ret)
-
-        /*
-        encrypter.pad(false);
-        let mut plaintext = vec![0; padded_input.len() + block_size];
-        let mut plaintext_count = match encrypter.update(&padded_input, &mut plaintext) {
-            Ok(x) => x,
-            Err(e) => {
-                let ret = format!(
-                    "project \"{}\" encrypt {} update failed\n{:?}",
-                    self.name(),
-                    hex::encode(input),
-                    e
-                );
-                debug!("{}", ret);
-                return Err(ret);
-            }
-        };
-
-        plaintext_count += match encrypter.finalize(&mut plaintext[plaintext_count..]) {
-            Ok(x) => x,
-            Err(e) => {
-                let ret = format!(
-                    "project \"{}\" encrypt {} finalize failed\n{:?}",
-                    self.name(),
-                    hex::encode(input),
-                    e
-                );
-                debug!("{}", ret);
-                return Err(ret);
-            }
-        };
-
-        plaintext.truncate(plaintext_count);
-        Ok(plaintext)
-        */
     }
 
     pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {

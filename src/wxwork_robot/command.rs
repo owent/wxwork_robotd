@@ -64,7 +64,6 @@ pub struct WxWorkCommand {
     name: Arc<String>,
     pub envs: serde_json::Value,
     rule: Regex,
-    config: serde_json::Value,
     pub hidden: bool,
     pub description: Arc<String>,
     pub order: i64,
@@ -463,7 +462,6 @@ impl WxWorkCommand {
             name: Arc::new(String::from(cmd_name)),
             rule: rule_obj,
             envs: envs_obj,
-            config: json.clone(),
             hidden: if let Some(x) = read_bool_from_json_object(json, "hidden") {
                 x
             } else {
