@@ -10,42 +10,43 @@ on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#web
       - "*"
 
 jobs:
-  build: # job id, can be any string
+  linux_build: # job id, can be any string
     # Job name is Build And Publish
-    name: Build
+    name: Linux Build
     # This job runs on Linux
     strategy:
       matrix:
         os: [ubuntu-latest]
         rust: [stable]
-        target: [x86_64-unknown-linux-gnu]
-    #aarch64-unknown-linux-gnu,
-    #arm-unknown-linux-gnueabi,
-    #armv7-unknown-linux-gnueabihf,
-    #i686-unknown-linux-gnu,
-    #mips-unknown-linux-gnu,
-    #mipsel-unknown-linux-gnu,
-    #mips64-unknown-linux-gnuabi64,
-    #mips64el-unknown-linux-gnuabi64,
-    #powerpc-unknown-linux-gnu,
-    #powerpc64-unknown-linux-gnu,
-    #powerpc64le-unknown-linux-gnu,
-    #aarch64-unknown-linux-musl,
-    #arm-unknown-linux-musleabihf,
-    #arm-unknown-linux-musleabi,
-    #armv7-unknown-linux-musleabihf,
-    #i686-unknown-linux-musl,
-    #mips-unknown-linux-musl,
-    #mipsel-unknown-linux-musl,
-    #x86_64-unknown-linux-musl,
-    #aarch64-linux-android,
-    #arm-linux-androideabi,
-    #armv7-linux-androideabi,
-    #i686-linux-android,
-    #x86_64-linux-android,
-    #x86_64-unknown-netbsd,
-    #x86_64-unknown-freebsd,
-    #x86_64-sun-solaris,
+        target: 
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - arm-unknown-linux-gnueabi
+          - armv7-unknown-linux-gnueabihf
+          - i686-unknown-linux-gnu
+          - mips-unknown-linux-gnu
+          - mipsel-unknown-linux-gnu
+          - mips64-unknown-linux-gnuabi64
+          - mips64el-unknown-linux-gnuabi64
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - arm-unknown-linux-musleabihf
+          - arm-unknown-linux-musleabi
+          - armv7-unknown-linux-musleabihf
+          - i686-unknown-linux-musl
+          - mips-unknown-linux-musl
+          - mipsel-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+          - aarch64-linux-android
+          - arm-linux-androideabi
+          - armv7-linux-androideabi
+          - i686-linux-android
+          - x86_64-linux-android
+          - x86_64-unknown-netbsd
+          - x86_64-unknown-freebsd
+          - x86_64-sun-solaris
     # see https://github.com/rust-embedded/cross
     # Github action is run under a docker pod but cross need docker service
     runs-on: ${{ matrix.os }}
@@ -61,20 +62,28 @@ jobs:
           default: true
           components: "rustfmt, clippy, cargo, rust-docs"
       - name: Format and lint
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
         shell: bash
         run: |
           cargo fmt --all -- --check
           cargo clippy
-      - name: Release build
+      - name: Cargo Release build
         uses: actions-rs/cargo@v1
-        if: ${{ matrix.os != 'ubuntu-latest' }}
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
         with:
+          use-cross: false
+          command: build
+          args: --release --all-features
+      - name: Cross Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
+        with:
+          use-cross: true
           command: build
           args: --release --all-features
       - name: Debug build & test
         uses: actions-rs/cargo@v1
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
         with:
           command: test
           args: --all-features
@@ -88,7 +97,7 @@ jobs:
             ~/.cargo
             !~/prebuilt/exclude
           key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-      - name: Build
+      - name: Package
         shell: bash
         run: |
           if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
@@ -97,8 +106,9 @@ jobs:
           if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
             rm -rf "target/${{ matrix.target }}/release/tools";
           fi
-          cp -rf etc tools "target/${{ matrix.target }}/release"/ ;
-          cd "target/${{ matrix.target }}/release/";
+          mkdir -p "target/${{ matrix.target }}/release"
+          cp -rf etc tools "target/${{ matrix.target }}/release"/
+          cd "target/${{ matrix.target }}/release/"
           mkdir -p bin;
           if [[ -e wxwork_robotd ]]; then
             cp -f wxwork_robotd bin/wxwork_robotd;
@@ -107,7 +117,7 @@ jobs:
           fi
           tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
           cp -f ../../../Dockerfile ./;
-          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" != "x$GITHUB_EVENT_NAME" ]]; then
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x$GITHUB_EVENT_NAME" ]]; then
             TAG_NAME=${GITHUB_REF//*\/};
             echo "Trigger by tag -> $TAG_NAME";
             which docker || true;
@@ -121,3 +131,108 @@ jobs:
           fi
           cd ../../..;
           mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
+  macos_build: # job id, can be any string
+    # Job name is Build And Publish
+    name: macOS Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [macOS-latest]
+        rust: [stable]
+        target: [x86_64-apple-darwin]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: build
+          args: --release --all-features
+      - name: Package
+        shell: bash
+        run: |
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          mkdir -p "target/${{ matrix.target }}/release"
+          cp -rf etc tools "target/${{ matrix.target }}/release"/ ;
+          cd "target/${{ matrix.target }}/release/";
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cd ../../..;
+          mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
+      - name: Run tests
+        run: |
+          cargo test --release --verbose --target ${{ matrix.target }}
+  windows_build: # job id, can be any string
+    # Job name is Build And Publish
+    name: Windows Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [windows-latest]
+        rust: [stable]
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
+    #, x86_64-pc-windows-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --release --all-features
+      - name: Cross Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target == 'x86_64-pc-windows-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --release --all-features
+      - name: Package
+        shell: pwsh
+        run: |
+          Copy-Item -Force -Recurse etc "./target/${{ matrix.target }}/release/"
+          Copy-Item -Force -Recurse tools "./target/${{ matrix.target }}/release/"
+          cd "./target/${{ matrix.target }}/release/"
+          mkdir bin
+          Copy-Item -Force wxwork_robotd.exe bin/
+          if ( Test-Path "${{ matrix.target }}.zip" ) { Remove-Item -Force "${{ matrix.target }}.zip" }
+          Compress-Archive -DestinationPath "${{ matrix.target }}.zip" -Path etc,bin,tools
+          Get-ChildItem
+          Get-ChildItem -Recurse etc,bin,tools
+          Copy-Item -Force "${{ matrix.target }}.zip" ../../../
+          cd ../../../
+      - name: Run tests
+        shell: pwsh
+        run: |
+          cargo test --release --verbose --target ${{ matrix.target }}
