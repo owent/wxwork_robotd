@@ -3,12 +3,12 @@ name: "Build and release"
 on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
   push:
     branches: # Array of patterns that match refs/heads
-      - dev
       - main
-    pull_request:
-      branches: [ main ]
     tags:
       - "*"
+  pull_request:
+    branches:
+      - main
 
 jobs:
   linux_build: # job id, can be any string
@@ -118,20 +118,29 @@ jobs:
           fi
           tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
           cp -f ../../../Dockerfile ./;
-          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x$GITHUB_EVENT_NAME" ]]; then
-            TAG_NAME=${GITHUB_REF//*\/};
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x${{ env.GITHUB_REF_TYPE }}" ]]; then
+            TAG_NAME="${{ env.GITHUB_REF_NAME }}";
             echo "Trigger by tag -> $TAG_NAME";
             which docker || true;
-            # echo "$DOCKER_TOKEN" | docker login -u "owt5008137" --password-stdin docker.io
-            # docker build --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest .
-            # docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TAG_NAME
-            # docker push docker.io/owt5008137/wxwork_robotd:latest
-            # docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+            echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "owt5008137" --password-stdin docker.io
+            docker build --build-arg=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest -f Dockerfile .
+            docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+            docker push docker.io/owt5008137/wxwork_robotd:latest
+            docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME
           else
-            echo "Trigger by $GITHUB_EVENT_NAME -> $GITHUB_REF";
+            echo "Trigger by ${{ env.GITHUB_REF_TYPE }} -> ${{ env.GITHUB_REF_NAME }}";
           fi
           cd ../../..;
           mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ env.GITHUB_REF_TYPE == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.tar.gz"
+          tags: true
+          draft: true
+          overwrite: true
   macos_build: # job id, can be any string
     # Job name is Build And Publish
     name: macOS Build
@@ -183,6 +192,15 @@ jobs:
       - name: Run tests
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ env.GITHUB_REF_TYPE == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.tar.gz"
+          tags: true
+          draft: true
+          overwrite: true
   windows_build: # job id, can be any string
     # Job name is Build And Publish
     name: Windows Build
@@ -237,3 +255,12 @@ jobs:
         shell: pwsh
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ env.GITHUB_REF_TYPE == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.tar.gz"
+          tags: true
+          draft: true
+          overwrite: true
