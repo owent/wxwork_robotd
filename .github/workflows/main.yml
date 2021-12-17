@@ -25,20 +25,20 @@ jobs:
           - arm-unknown-linux-gnueabi
           - armv7-unknown-linux-gnueabihf
           - i686-unknown-linux-gnu
-          - mips-unknown-linux-gnu
-          - mipsel-unknown-linux-gnu
-          - mips64-unknown-linux-gnuabi64
-          - mips64el-unknown-linux-gnuabi64
-          - powerpc-unknown-linux-gnu
-          - powerpc64-unknown-linux-gnu
-          - powerpc64le-unknown-linux-gnu
+          #- mips-unknown-linux-gnu
+          #- mipsel-unknown-linux-gnu
+          #- mips64-unknown-linux-gnuabi64
+          #- mips64el-unknown-linux-gnuabi64
+          #- powerpc-unknown-linux-gnu
+          #- powerpc64-unknown-linux-gnu
+          #- powerpc64le-unknown-linux-gnu
           - aarch64-unknown-linux-musl
           - arm-unknown-linux-musleabihf
           - arm-unknown-linux-musleabi
           - armv7-unknown-linux-musleabihf
           - i686-unknown-linux-musl
-          - mips-unknown-linux-musl
-          - mipsel-unknown-linux-musl
+          #- mips-unknown-linux-musl
+          #- mipsel-unknown-linux-musl
           - x86_64-unknown-linux-musl
           - aarch64-linux-android
           - arm-linux-androideabi
