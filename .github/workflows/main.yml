@@ -1,4 +1,4 @@
-name: "Build On Linux"
+name: "Build and release"
 
 on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
   push:
@@ -46,7 +46,7 @@ jobs:
           - i686-linux-android
           - x86_64-linux-android
           - x86_64-unknown-netbsd
-          - x86_64-unknown-freebsd
+          # - x86_64-unknown-freebsd
           - x86_64-sun-solaris
     # see https://github.com/rust-embedded/cross
     # Github action is run under a docker pod but cross need docker service
