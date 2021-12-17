@@ -118,8 +118,8 @@ jobs:
           fi
           tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
           cp -f ../../../Dockerfile ./;
-          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x${{ env.GITHUB_REF_TYPE }}" ]]; then
-            TAG_NAME="${{ env.GITHUB_REF_NAME }}";
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x$GITHUB_REF_TYPE" ]]; then
+            TAG_NAME="$GITHUB_REF_TYPE";
             echo "Trigger by tag -> $TAG_NAME";
             which docker || true;
             echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "owt5008137" --password-stdin docker.io
@@ -128,12 +128,12 @@ jobs:
             docker push docker.io/owt5008137/wxwork_robotd:latest
             docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME
           else
-            echo "Trigger by ${{ env.GITHUB_REF_TYPE }} -> ${{ env.GITHUB_REF_NAME }}";
+            echo "Trigger by $GITHUB_REF_TYPE -> $GITHUB_REF_NAME";
           fi
           cd ../../..;
           mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
       - uses: xresloader/upload-to-github-release@v1
-        if: ${{ env.GITHUB_REF_TYPE == 'tag' }}
+        if: ${{ github.ref_type == 'tag' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -193,7 +193,7 @@ jobs:
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}
       - uses: xresloader/upload-to-github-release@v1
-        if: ${{ env.GITHUB_REF_TYPE == 'tag' }}
+        if: ${{ github.ref_type == 'tag' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -256,7 +256,7 @@ jobs:
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}
       - uses: xresloader/upload-to-github-release@v1
-        if: ${{ env.GITHUB_REF_TYPE == 'tag' }}
+        if: ${{ github.ref_type == 'tag' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
