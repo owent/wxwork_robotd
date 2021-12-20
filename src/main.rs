@@ -8,8 +8,8 @@ static GLOBAL: System = System;
 // crates
 #[macro_use]
 extern crate clap;
-extern crate actix_rt;
 extern crate actix_web;
+extern crate awc;
 extern crate futures;
 #[macro_use]
 extern crate log;
@@ -46,7 +46,7 @@ pub mod handles;
 pub mod logger;
 pub mod wxwork_robot;
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> io::Result<()> {
     let mut app_env = app::app();
     if app_env.debug {
@@ -81,13 +81,13 @@ async fn main() -> io::Result<()> {
             // ====== register for index ======
             .service(
                 web::resource(app_env.prefix.to_string())
-                    .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
+                    .app_data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
                     .to(move |req| handles::default::dispatch_default_index(reg_move_default, req)),
             )
             // ====== register for project ======
             .service(
                 web::resource(format!("{}{{project}}/", app_env.prefix).as_str())
-                    .data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
+                    .app_data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
                     .to(move |req, body| {
                         handles::robot::dispatch_robot_request(reg_move_robot, req, body)
                     }),
