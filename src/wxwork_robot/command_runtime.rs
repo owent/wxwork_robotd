@@ -11,7 +11,8 @@ use regex::{Regex, RegexBuilder};
 use tokio::process::Command;
 use tokio::time::timeout;
 
-use actix_web::{client, http};
+use actix_web::http;
+use awc;
 
 use handlebars::Handlebars;
 
@@ -182,39 +183,41 @@ async fn run_http(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
             let mut http_request = match http_data.method {
                 command::WxWorkCommandHttpMethod::Auto => {
                     if !post_data.is_empty() {
-                        client::Client::default().post(http_url.as_str())
+                        awc::Client::default().post(http_url.as_str())
                     } else {
-                        client::Client::default().get(http_url.as_str())
+                        awc::Client::default().get(http_url.as_str())
                     }
                 }
                 command::WxWorkCommandHttpMethod::Get => {
-                    client::Client::default().get(http_url.as_str())
+                    awc::Client::default().get(http_url.as_str())
                 }
                 command::WxWorkCommandHttpMethod::Post => {
-                    client::Client::default().post(http_url.as_str())
+                    awc::Client::default().post(http_url.as_str())
                 }
                 command::WxWorkCommandHttpMethod::Delete => {
-                    client::Client::default().delete(http_url.as_str())
+                    awc::Client::default().delete(http_url.as_str())
                 }
                 command::WxWorkCommandHttpMethod::Put => {
-                    client::Client::default().put(http_url.as_str())
+                    awc::Client::default().put(http_url.as_str())
                 }
                 command::WxWorkCommandHttpMethod::Head => {
-                    client::Client::default().head(http_url.as_str())
+                    awc::Client::default().head(http_url.as_str())
                 }
             };
             http_request = http_request
                 .timeout(Duration::from_millis(app::app_conf().task_timeout))
-                .header(
+                .insert_header_if_none((
                     http::header::USER_AGENT,
                     format!("Mozilla/5.0 (WXWork-Robotd {})", crate_version!()),
-                );
+                ));
             if !http_data.content_type.is_empty() {
-                http_request = http_request
-                    .header(http::header::CONTENT_TYPE, http_data.content_type.as_str());
+                http_request = http_request.insert_header_if_none((
+                    http::header::CONTENT_TYPE,
+                    http_data.content_type.as_str(),
+                ));
             }
             for (k, v) in &http_data.headers {
-                http_request = http_request.header(k.as_str(), v.as_str());
+                http_request = http_request.insert_header_if_none((k.as_str(), v.as_str()));
             }
 
             http_req_f = http_request.send_body(post_data);

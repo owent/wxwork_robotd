@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 name = "wxwork_robotd"
 readme = "README.md"
 repository = "https://github.com/owt5008137/wxwork_robotd"
-version = "0.9.0"
+version = "0.9.1"
 [[bin]]
 name = "wxwork_robotd"
 
@@ -22,7 +22,6 @@ features = ["suggestions", "color"]
 version = "^2.33.0"
 
 [dependencies]
-actix-rt = "^1.1.1" # "^2.5.0" is required by actix-web "^4.0.0"
 byteorder = "^1.3.2"
 bytes = "^1.1.0"
 chrono = ">=0.4.11"
@@ -46,8 +45,12 @@ cipher = ">=0.3.0"
 # https://github.com/RustCrypto
 
 [dependencies.actix-web]
-features = ["compress", "rustls"]
-version = "^3.3.2"
+features = ["rustls"]
+version = "^4.0.0-beta.15"
+
+[dependencies.awc]
+features = ["rustls"]
+version = "^3.0.0-beta.14"
 
 [dependencies.clap]
 default-features = false

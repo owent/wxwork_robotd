@@ -17,7 +17,7 @@ pub struct AppConfigure {
     pub task_timeout: u64,
     pub hosts: Option<Vec<String>>,
     pub workers: usize,
-    pub backlog: i32,
+    pub backlog: u32,
     pub keep_alive: usize,
     pub client_timeout: u64,
     pub client_shutdown: u64,
@@ -536,7 +536,7 @@ impl AppEnvironment {
             if let Some(v) = x.as_u64() {
                 if v > 0 {
                     unsafe {
-                        APP_ENV_INFO_STORE.conf.backlog = v as i32;
+                        APP_ENV_INFO_STORE.conf.backlog = v as u32;
                     }
                 }
             }
