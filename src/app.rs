@@ -138,13 +138,6 @@ pub fn app() -> AppEnvironment {
         .about(crate_description!())
         .max_term_width(120)
         .arg(
-            Arg::new("version")
-                .short('v')
-                .long("version")
-                .action(ArgAction::SetTrue)
-                .help("Show version"),
-        )
-        .arg(
             Arg::new("debug")
                 .short('d')
                 .long("debug")
@@ -195,10 +188,6 @@ pub fn app() -> AppEnvironment {
         );
 
     let matches: ArgMatches = app.get_matches();
-    if unwraper_flag(&matches, "version") {
-        println!("{}", crate_version!());
-        process::exit(0);
-    }
 
     unsafe {
         if unwraper_flag(&matches, "debug") {
