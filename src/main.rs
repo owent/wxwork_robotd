@@ -22,7 +22,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate aes;
-extern crate block_modes;
+extern crate cbc;
 extern crate cipher;
 extern crate md5;
 extern crate regex;
@@ -40,6 +40,7 @@ extern crate tokio;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use std::io;
 use std::net::TcpListener;
+use std::time::Duration;
 
 pub mod app;
 pub mod handles;
@@ -104,9 +105,9 @@ async fn main() -> io::Result<()> {
         .backlog(app_env.conf.backlog)
         .max_connections(app_env.conf.max_connection_per_worker)
         .max_connection_rate(app_env.conf.max_concurrent_rate_per_worker)
-        .keep_alive(app_env.conf.keep_alive)
-        .client_timeout(app_env.conf.client_timeout)
-        .client_shutdown(app_env.conf.client_shutdown);
+        .keep_alive(Duration::from_secs(app_env.conf.keep_alive))
+        .client_request_timeout(Duration::from_millis(app_env.conf.client_timeout))
+        .client_disconnect_timeout(Duration::from_millis(app_env.conf.client_shutdown));
 
     // server = server.client_timeout(app_env.conf.task_timeout);
     let mut listened_count = 0;

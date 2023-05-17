@@ -5,7 +5,6 @@ pub enum Error {
     StringErr(String),
     ActixWebErr(actix_web::Error),
     Base64Err(base64::DecodeError),
-    CryptoErr(block_modes::BlockModeError),
 }
 
 impl From<Error> for actix_web::Error {
@@ -13,7 +12,6 @@ impl From<Error> for actix_web::Error {
         match e {
             Error::ActixWebErr(x) => x,
             Error::StringErr(x) => actix_web::error::ErrorForbidden(x),
-            Error::CryptoErr(x) => actix_web::error::ErrorForbidden(format!("{:?}", x)),
             Error::Base64Err(x) => actix_web::error::ErrorForbidden(format!("{:?}", x)),
         }
     }

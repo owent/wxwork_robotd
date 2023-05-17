@@ -61,9 +61,5 @@ pub fn build_project_set(json: &serde_json::Value) -> Option<WxWorkProjectSet> {
 }
 
 pub fn build_project_set_shared(json: &serde_json::Value) -> Option<WxWorkProjectSetShared> {
-    if let Some(x) = build_project_set(json) {
-        Some(Arc::new(Mutex::new(x)))
-    } else {
-        None
-    }
+    build_project_set(json).map(|x| Arc::new(Mutex::new(x)))
 }

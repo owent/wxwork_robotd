@@ -1,15 +1,19 @@
-use actix_web::web;
-use md5::{Digest, Md5};
+use quick_xml::events::BytesCData;
+
+use crate::actix_web::web;
+use crate::md5::{Digest, Md5};
 
 // use hex;
-use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
-use quick_xml::Reader;
-use quick_xml::Writer;
+use crate::quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
+use crate::quick_xml::name::QName;
+use crate::quick_xml::Reader;
+use crate::quick_xml::Writer;
+
+use crate::actix_web::HttpResponse;
+
+use crate::regex::{Regex, RegexBuilder};
+
 use std::io::Cursor;
-
-use actix_web::HttpResponse;
-
-use regex::{Regex, RegexBuilder};
 
 use super::base64;
 
@@ -75,29 +79,27 @@ pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
     reader.trim_text(true);
     let mut is_msg_field = false;
     let mut ret = None;
-    let mut buf = Vec::new();
+
     loop {
-        match reader.read_event(&mut buf) {
+        match reader.read_event() {
             Ok(Event::Start(ref e)) => {
-                if let b"Encrypt" = e.name() {
+                if let QName(b"Encrypt") = e.name() {
                     is_msg_field = true;
                 }
             }
             Ok(Event::End(ref e)) => {
-                if let b"Encrypt" = e.name() {
+                if let QName(b"Encrypt") = e.name() {
                     is_msg_field = false;
                 }
             }
             Ok(Event::CData(data)) => {
                 if is_msg_field {
-                    if let Ok(x) = data.unescaped() {
-                        match String::from_utf8(Vec::from(x)) {
-                            Ok(s) => {
-                                ret = Some(s);
-                            }
-                            Err(e) => {
-                                error!("decode Encrypt as utf8 failed, {:?}", e);
-                            }
+                    match String::from_utf8(Vec::from(data.into_inner())) {
+                        Ok(s) => {
+                            ret = Some(s);
+                        }
+                        Err(e) => {
+                            error!("decode Encrypt as utf8 failed, {:?}", e);
                         }
                     }
                 }
@@ -106,12 +108,12 @@ pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
             Ok(Event::Eof) => break,
             _ => (),
         }
-        buf.clear();
     }
 
     ret
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum WxWorkMsgField {
     None,
     WebHookUrl,
@@ -159,12 +161,85 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
     let mut reader = Reader::from_str(input);
     reader.trim_text(true);
 
-    let mut buf = Vec::new();
+    let mut setter_fn = |data_str, field_mode| match field_mode {
+        WxWorkMsgField::WebHookUrl => {
+            web_hook_url = data_str;
+            debug!("Parse data for WebhookUrl");
+        }
+        WxWorkMsgField::FromUserId => {
+            from_user_id = data_str;
+            debug!("Parse data for From.UserId");
+        }
+        WxWorkMsgField::FromName => {
+            from_name = data_str;
+            debug!("Parse data for From.Name");
+        }
+        WxWorkMsgField::FromAlias => {
+            from_alias = data_str;
+            debug!("Parse data for From.Alias");
+        }
+        WxWorkMsgField::MsgType => {
+            msg_type = data_str;
+            debug!("Parse data for MsgType");
+        }
+        WxWorkMsgField::Content => {
+            content = data_str;
+            debug!("Parse data for Content");
+        }
+        WxWorkMsgField::ImageUrl => {
+            image_url = data_str;
+            debug!("Parse data for ImageUrl");
+        }
+        WxWorkMsgField::MsgId => {
+            msg_id = data_str;
+            debug!("Parse data for MsgId");
+        }
+        WxWorkMsgField::GetChatInfoUrl => {
+            get_chat_info_url = data_str;
+            debug!("Parse data for GetChatInfoUrl");
+        }
+        WxWorkMsgField::PostId => {
+            post_id = data_str;
+            debug!("Parse data for PostId");
+        }
+        WxWorkMsgField::ChatId => {
+            chat_id = data_str;
+            debug!("Parse data for ChatId");
+        }
+        WxWorkMsgField::ChatType => {
+            chat_type = data_str;
+            debug!("Parse data for ChatType");
+        }
+        WxWorkMsgField::AppVersion => {
+            app_version = data_str;
+            debug!("Parse data for AppVersion");
+        }
+        WxWorkMsgField::EventType => {
+            event_type = data_str;
+            debug!("Parse data for EventType");
+        }
+        WxWorkMsgField::ActionCallbackId => {
+            action_callbackid = data_str;
+            debug!("Parse data for ActionCallbackId");
+        }
+        WxWorkMsgField::ActionName => {
+            action_name = data_str;
+            debug!("Parse data for ActionName");
+        }
+        WxWorkMsgField::ActionValue => {
+            action_value = data_str;
+            debug!("Parse data for ActionValue");
+        }
+        _ => {
+            debug!("Ignore data {}", data_str);
+        }
+    };
+
     loop {
-        match reader.read_event(&mut buf) {
+        match reader.read_event() {
             Ok(Event::Start(ref e)) => {
                 let tag_name = e.name();
-                match tag_name {
+                match tag_name.into_inner() {
                     b"WebhookUrl" => {
                         field_mode = WxWorkMsgField::WebHookUrl;
                         debug!("Parse get ready for WebhookUrl");
@@ -268,7 +343,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
                     }
                 }
             }
-            Ok(Event::End(ref e)) => match e.name() {
+            Ok(Event::End(ref e)) => match e.name().into_inner() {
                 b"WebhookUrl" => {
                     if let WxWorkMsgField::WebHookUrl = field_mode {
                         field_mode = WxWorkMsgField::None;
@@ -405,21 +480,17 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
                     );
                 }
             },
-            Ok(Event::CData(data)) | Ok(Event::Text(data)) => {
+            Ok(Event::CData(data)) => {
                 if let WxWorkMsgField::None = field_mode {
                     continue;
                 }
 
-                let data_str_opt = if let Ok(x) = data.unescaped() {
-                    match String::from_utf8(Vec::from(x)) {
-                        Ok(s) => Some(s),
-                        Err(e) => {
-                            error!("decode Encrypt as utf8 failed, {:?}", e);
-                            None
-                        }
+                let data_str_opt = match String::from_utf8(Vec::from(data.into_inner())) {
+                    Ok(s) => Some(s),
+                    Err(e) => {
+                        error!("decode Encrypt as utf8 failed, {:?}", e);
+                        None
                     }
-                } else {
-                    None
                 };
 
                 let data_str = if let Some(x) = data_str_opt {
@@ -428,85 +499,34 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
                     continue;
                 };
 
-                match field_mode {
-                    WxWorkMsgField::WebHookUrl => {
-                        web_hook_url = data_str;
-                        debug!("Parse data for WebhookUrl");
-                    }
-                    WxWorkMsgField::FromUserId => {
-                        from_user_id = data_str;
-                        debug!("Parse data for From.UserId");
-                    }
-                    WxWorkMsgField::FromName => {
-                        from_name = data_str;
-                        debug!("Parse data for From.Name");
-                    }
-                    WxWorkMsgField::FromAlias => {
-                        from_alias = data_str;
-                        debug!("Parse data for From.Alias");
-                    }
-                    WxWorkMsgField::MsgType => {
-                        msg_type = data_str;
-                        debug!("Parse data for MsgType");
-                    }
-                    WxWorkMsgField::Content => {
-                        content = data_str;
-                        debug!("Parse data for Content");
-                    }
-                    WxWorkMsgField::ImageUrl => {
-                        image_url = data_str;
-                        debug!("Parse data for ImageUrl");
-                    }
-                    WxWorkMsgField::MsgId => {
-                        msg_id = data_str;
-                        debug!("Parse data for MsgId");
-                    }
-                    WxWorkMsgField::GetChatInfoUrl => {
-                        get_chat_info_url = data_str;
-                        debug!("Parse data for GetChatInfoUrl");
-                    }
-                    WxWorkMsgField::PostId => {
-                        post_id = data_str;
-                        debug!("Parse data for PostId");
-                    }
-                    WxWorkMsgField::ChatId => {
-                        chat_id = data_str;
-                        debug!("Parse data for ChatId");
-                    }
-                    WxWorkMsgField::ChatType => {
-                        chat_type = data_str;
-                        debug!("Parse data for ChatType");
-                    }
-                    WxWorkMsgField::AppVersion => {
-                        app_version = data_str;
-                        debug!("Parse data for AppVersion");
-                    }
-                    WxWorkMsgField::EventType => {
-                        event_type = data_str;
-                        debug!("Parse data for EventType");
-                    }
-                    WxWorkMsgField::ActionCallbackId => {
-                        action_callbackid = data_str;
-                        debug!("Parse data for ActionCallbackId");
-                    }
-                    WxWorkMsgField::ActionName => {
-                        action_name = data_str;
-                        debug!("Parse data for ActionName");
-                    }
-                    WxWorkMsgField::ActionValue => {
-                        action_value = data_str;
-                        debug!("Parse data for ActionValue");
-                    }
-                    _ => {
-                        debug!("Ignore data {}", data_str);
-                    }
-                }
+                setter_fn(data_str, field_mode);
             }
+            Ok(Event::Text(data)) => {
+                if let WxWorkMsgField::None = field_mode {
+                    continue;
+                }
+
+                let data_str_opt = match String::from_utf8(Vec::from(data.into_inner())) {
+                    Ok(s) => Some(s),
+                    Err(e) => {
+                        error!("decode Encrypt as utf8 failed, {:?}", e);
+                        None
+                    }
+                };
+
+                let data_str = if let Some(x) = data_str_opt {
+                    x
+                } else {
+                    continue;
+                };
+
+                setter_fn(data_str, field_mode);
+            }
+
             Err(e) => error!("Error at position {}: {:?}", reader.buffer_position(), e),
             Ok(Event::Eof) => break,
             _ => {}
         }
-        buf.clear();
     }
 
     let web_hook_key = if let Some(caps) = PICK_WEBHOOK_KEY_RULE.captures(web_hook_url.as_str()) {
@@ -556,71 +576,70 @@ pub fn pack_text_message(msg: WxWorkMessageTextRsp) -> Result<String, String> {
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
     if writer
-        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .write_event(Event::Start(BytesStart::new("xml")))
         .is_ok()
     {
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgType")))
+            .write_event(Event::Start(BytesStart::new("MsgType")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::Text(BytesText::from_plain_str("text")));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
+            let _ = writer.write_event(Event::Text(BytesText::new("text")));
+            let _ = writer.write_event(Event::End(BytesEnd::new("MsgType")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"Text")))
+            .write_event(Event::Start(BytesStart::new("Text")))
             .is_ok()
         {
             if writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"Content")))
+                .write_event(Event::Start(BytesStart::new("Content")))
                 .is_ok()
             {
-                let _ = writer.write_event(Event::CData(BytesText::from_plain_str(
-                    msg.content.as_str(),
+                let _ = writer.write_event(Event::CData(BytesCData::new(
+                    quick_xml::escape::escape(msg.content.as_str()),
                 )));
-                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Content")));
+                let _ = writer.write_event(Event::End(BytesEnd::new("Content")));
             }
 
             if writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"MentionedList")))
+                .write_event(Event::Start(BytesStart::new("MentionedList")))
                 .is_ok()
             {
                 for v in msg.mentioned_list {
                     if writer
-                        .write_event(Event::Start(BytesStart::borrowed_name(b"Item")))
+                        .write_event(Event::Start(BytesStart::new("Item")))
                         .is_ok()
                     {
-                        let _ =
-                            writer.write_event(Event::CData(BytesText::from_plain_str(v.as_str())));
-                        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Item")));
+                        let _ = writer.write_event(Event::CData(BytesCData::new(
+                            quick_xml::escape::escape(v.as_str()),
+                        )));
+                        let _ = writer.write_event(Event::End(BytesEnd::new("Item")));
                     }
                 }
-                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MentionedList")));
+                let _ = writer.write_event(Event::End(BytesEnd::new("MentionedList")));
             }
 
             if writer
-                .write_event(Event::Start(BytesStart::borrowed_name(
-                    b"MentionedMobileList",
-                )))
+                .write_event(Event::Start(BytesStart::new("MentionedMobileList")))
                 .is_ok()
             {
                 for v in msg.mentioned_mobile_list {
                     if writer
-                        .write_event(Event::Start(BytesStart::borrowed_name(b"Item")))
+                        .write_event(Event::Start(BytesStart::new("Item")))
                         .is_ok()
                     {
-                        let _ = writer.write_event(Event::CData(BytesText::from_plain_str(
-                            v.to_string().as_str(),
+                        let _ = writer.write_event(Event::CData(BytesCData::new(
+                            quick_xml::escape::escape(v.to_string().as_str()),
                         )));
-                        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Item")));
+                        let _ = writer.write_event(Event::End(BytesEnd::new("Item")));
                     }
                 }
-                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MentionedMobileList")));
+                let _ = writer.write_event(Event::End(BytesEnd::new("MentionedMobileList")));
             }
 
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Text")));
+            let _ = writer.write_event(Event::End(BytesEnd::new("Text")));
         }
-        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
+        let _ = writer.write_event(Event::End(BytesEnd::new("xml")));
     }
 
     match String::from_utf8(writer.into_inner().into_inner()) {
@@ -634,35 +653,35 @@ pub fn pack_markdown_message(msg: WxWorkMessageMarkdownRsp) -> Result<String, St
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
     if writer
-        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .write_event(Event::Start(BytesStart::new("xml")))
         .is_ok()
     {
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgType")))
+            .write_event(Event::Start(BytesStart::new("MsgType")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::Text(BytesText::from_plain_str("markdown")));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
+            let _ = writer.write_event(Event::Text(BytesText::new("markdown")));
+            let _ = writer.write_event(Event::End(BytesEnd::new("MsgType")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"Markdown")))
+            .write_event(Event::Start(BytesStart::new("Markdown")))
             .is_ok()
         {
             if writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"Content")))
+                .write_event(Event::Start(BytesStart::new("Content")))
                 .is_ok()
             {
                 // BytesText::from_escaped_str
-                let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
-                    msg.content.as_str(),
+                let _ = writer.write_event(Event::CData(BytesCData::new(
+                    quick_xml::escape::escape(msg.content.as_str()),
                 )));
-                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Content")));
+                let _ = writer.write_event(Event::End(BytesEnd::new("Content")));
             }
 
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Markdown")));
+            let _ = writer.write_event(Event::End(BytesEnd::new("Markdown")));
         }
-        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
+        let _ = writer.write_event(Event::End(BytesEnd::new("xml")));
     }
 
     match String::from_utf8(writer.into_inner().into_inner()) {
@@ -676,52 +695,56 @@ pub fn pack_image_message(msg: WxWorkMessageImageRsp) -> Result<String, String> 
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
     if writer
-        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .write_event(Event::Start(BytesStart::new("xml")))
         .is_ok()
     {
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgType")))
+            .write_event(Event::Start(BytesStart::new("MsgType")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str("image")));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgType")));
+            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
+                "image",
+            ))));
+            let _ = writer.write_event(Event::End(BytesEnd::new("MsgType")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"Image")))
+            .write_event(Event::Start(BytesStart::new("Image")))
             .is_ok()
         {
             if writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"Base64")))
+                .write_event(Event::Start(BytesStart::new("Base64")))
                 .is_ok()
             {
                 // BytesText::from_escaped_str
-                let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
-                    match base64::STANDARD.encode(&msg.content) {
-                        Ok(x) => x,
-                        Err(e) => e.message,
-                    },
-                )));
-                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Base64")));
+                let _ =
+                    writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
+                        match base64::STANDARD.encode(&msg.content) {
+                            Ok(x) => x,
+                            Err(e) => e.message,
+                        }
+                        .as_str(),
+                    ))));
+                let _ = writer.write_event(Event::End(BytesEnd::new("Base64")));
             }
 
             let mut hasher = Md5::new();
             hasher.update(&msg.content);
 
             if writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"Md5")))
+                .write_event(Event::Start(BytesStart::new("Md5")))
                 .is_ok()
             {
                 // BytesText::from_escaped_str
-                let _ = writer.write_event(Event::CData(BytesText::from_escaped_str(
-                    hex::encode(hasher.finalize().as_slice()).as_str(),
+                let _ = writer.write_event(Event::CData(BytesCData::new(
+                    quick_xml::escape::escape(hex::encode(hasher.finalize().as_slice()).as_str()),
                 )));
-                let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Md5")));
+                let _ = writer.write_event(Event::End(BytesEnd::new("Md5")));
             }
 
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Image")));
+            let _ = writer.write_event(Event::End(BytesEnd::new("Image")));
         }
-        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
+        let _ = writer.write_event(Event::End(BytesEnd::new("xml")));
     }
 
     match String::from_utf8(writer.into_inner().into_inner()) {
@@ -739,44 +762,48 @@ pub fn pack_message_response(
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
     if writer
-        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .write_event(Event::Start(BytesStart::new("xml")))
         .is_ok()
     {
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"Encrypt")))
+            .write_event(Event::Start(BytesStart::new("Encrypt")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str(encrypt.as_str())));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Encrypt")));
+            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
+                encrypt.as_str(),
+            ))));
+            let _ = writer.write_event(Event::End(BytesEnd::new("Encrypt")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"MsgSignature")))
+            .write_event(Event::Start(BytesStart::new("MsgSignature")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str(
+            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
                 msg_signature.as_str(),
-            )));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"MsgSignature")));
+            ))));
+            let _ = writer.write_event(Event::End(BytesEnd::new("MsgSignature")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"TimeStamp")))
+            .write_event(Event::Start(BytesStart::new("TimeStamp")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::Text(BytesText::from_plain_str(timestamp.as_str())));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"TimeStamp")));
+            let _ = writer.write_event(Event::Text(BytesText::new(timestamp.as_str())));
+            let _ = writer.write_event(Event::End(BytesEnd::new("TimeStamp")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"Nonce")))
+            .write_event(Event::Start(BytesStart::new("Nonce")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str(nonce.as_str())));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"Nonce")));
+            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
+                nonce.as_str(),
+            ))));
+            let _ = writer.write_event(Event::End(BytesEnd::new("Nonce")));
         }
 
-        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
+        let _ = writer.write_event(Event::End(BytesEnd::new("xml")));
     }
 
     match String::from_utf8(writer.into_inner().into_inner()) {
@@ -796,25 +823,27 @@ pub fn get_robot_response_access_deny_content(msg: &str) -> String {
     let mut writer = Writer::new(Cursor::new(Vec::new()));
 
     if writer
-        .write_event(Event::Start(BytesStart::borrowed_name(b"xml")))
+        .write_event(Event::Start(BytesStart::new("xml")))
         .is_ok()
     {
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"message")))
+            .write_event(Event::Start(BytesStart::new("message")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesText::from_plain_str(msg)));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"message")));
+            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
+                msg,
+            ))));
+            let _ = writer.write_event(Event::End(BytesEnd::new("message")));
         }
 
         if writer
-            .write_event(Event::Start(BytesStart::borrowed_name(b"code")))
+            .write_event(Event::Start(BytesStart::new("code")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::Text(BytesText::from_plain_str("Access Deny")));
-            let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"code")));
+            let _ = writer.write_event(Event::Text(BytesText::new("Access Deny")));
+            let _ = writer.write_event(Event::End(BytesEnd::new("code")));
         }
-        let _ = writer.write_event(Event::End(BytesEnd::borrowed(b"xml")));
+        let _ = writer.write_event(Event::End(BytesEnd::new("xml")));
     }
 
     match String::from_utf8(writer.into_inner().into_inner()) {

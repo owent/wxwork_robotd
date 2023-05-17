@@ -126,7 +126,7 @@ impl Log for FileRotateLogger {
                 let content = if record.file().is_some() && record.line().is_some() {
                     format!(
                         "{} {:<5} [{}:{}@{}] {}\n",
-                        now.format("%Y-%m-%d %H:%M:%S").to_string(),
+                        now.format("%Y-%m-%d %H:%M:%S"),
                         record.level().to_string(),
                         record.file().unwrap(),
                         record.line().unwrap(),
@@ -136,7 +136,7 @@ impl Log for FileRotateLogger {
                 } else {
                     format!(
                         "{} {:<5} [{}] {}\n",
-                        now.format("%Y-%m-%d %H:%M:%S").to_string(),
+                        now.format("%Y-%m-%d %H:%M:%S"),
                         record.level().to_string(),
                         record.module_path().unwrap_or_default(),
                         record.args(),
@@ -177,7 +177,7 @@ impl Log for FileRotateLogger {
 }
 
 fn get_log_path(file_path: &str, rotate_num: i32) -> String {
-    return format!("{}.{}", file_path, rotate_num);
+    format!("{}.{}", file_path, rotate_num)
 }
 
 static mut SHARED_FILE_ROTATE_LOG: FileRotateLoggerWrapper = FileRotateLoggerWrapper::Nil;
