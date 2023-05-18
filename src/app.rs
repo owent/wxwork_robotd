@@ -1,12 +1,13 @@
-extern crate clap;
-use clap::{App, Arg, ArgMatches};
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use std::net::ToSocketAddrs;
 use std::path::Path;
 use std::process;
 use std::rc::Rc;
+use std::str::FromStr;
 use std::sync::Arc;
+
+use crate::clap::{Arg, ArgAction, ArgMatches};
 
 use super::wxwork_robot::command::{WxWorkCommandList, WxWorkCommandMatch, WxWorkCommandPtr};
 use super::wxwork_robot::project::WxWorkProject;
@@ -18,7 +19,7 @@ pub struct AppConfigure {
     pub hosts: Option<Vec<String>>,
     pub workers: usize,
     pub backlog: u32,
-    pub keep_alive: usize,
+    pub keep_alive: u64,
     pub client_timeout: u64,
     pub client_shutdown: u64,
     pub max_connection_per_worker: usize,
@@ -77,6 +78,50 @@ static mut APP_ENV_INFO_STORE: AppEnvironmentInfo = AppEnvironmentInfo {
     },
 };
 
+fn unwraper_flag<S>(matches: &ArgMatches, name: S) -> bool
+where
+    S: AsRef<str>,
+{
+    if let Ok(Some(x)) = matches.try_get_one::<bool>(name.as_ref()) {
+        return *x;
+    }
+
+    false
+}
+
+pub trait OptionValueWrapper<T> {
+    fn pick(input: &str) -> Option<T>;
+}
+
+impl<T> OptionValueWrapper<T> for T
+where
+    T: FromStr,
+{
+    fn pick(input: &str) -> Option<Self> {
+        if let Ok(v) = input.parse::<T>() {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+fn unwraper_option<T, S>(matches: &ArgMatches, name: S) -> Option<T>
+where
+    T: OptionValueWrapper<T>,
+    S: AsRef<str>,
+{
+    if let Ok(Some(x)) = matches.try_get_raw(name.as_ref()) {
+        for val in x {
+            if let Some(str_val) = val.to_str() {
+                return T::pick(str_val);
+            }
+        }
+    }
+
+    None
+}
+
 /// Build a clap application parameterized by usage strings.
 pub fn app() -> AppEnvironment {
     unsafe {
@@ -85,130 +130,100 @@ pub fn app() -> AppEnvironment {
         }
     }
 
-    let app = App::new(crate_name!())
+    let matches = command!();
+
+    let app = matches
         .author(crate_authors!())
         .version(crate_version!())
         .about(crate_description!())
-        .max_term_width(100)
+        .max_term_width(120)
         .arg(
-            Arg::with_name("version")
-                .short("v")
-                .long("version")
-                .help("Show version"),
-        )
-        .arg(
-            Arg::with_name("debug")
-                .short("d")
+            Arg::new("debug")
+                .short('d')
                 .long("debug")
+                .action(ArgAction::SetTrue)
                 .help("Show debug log"),
         )
         .arg(
-            Arg::with_name("prefix")
-                .short("P")
+            Arg::new("prefix")
+                .short('P')
                 .long("prefix")
                 .value_name("PREFIX")
                 .help("Set a url prefix for current service")
-                .takes_value(true)
                 .default_value("/"),
         )
         .arg(
-            Arg::with_name("configure")
-                .short("c")
+            Arg::new("configure")
+                .short('c')
                 .long("conf")
                 .value_name("CONFIGURE")
                 .help("Set configure file")
-                .required(true)
-                .takes_value(true),
+                .required(true),
         )
         .arg(
-            Arg::with_name("log")
-                .short("l")
+            Arg::new("log")
+                .short('l')
                 .long("log")
                 .value_name("LOG PATH")
-                .help("Set log path")
-                .takes_value(true),
+                .help("Set log path"),
         )
         .arg(
-            Arg::with_name("log-rotate")
+            Arg::new("log-rotate")
                 .long("log-rotate")
                 .value_name("LOG ROTATE")
                 .help("Set log rotate")
-                .takes_value(true)
                 .default_value("8"),
         )
         .arg(
-            Arg::with_name("log-rotate-size")
+            Arg::new("log-rotate-size")
                 .long("log-rotate-size")
                 .value_name("LOG ROTATE SIZE")
-                .help("Set log rotate size in bytes")
-                .takes_value(true),
+                .help("Set log rotate size in bytes"),
         )
         .arg(
-            Arg::with_name("pid-file")
+            Arg::new("pid-file")
                 .long("pid-file")
                 .value_name("PID FILE")
-                .help("Set path of pid file")
-                .takes_value(true),
+                .help("Set path of pid file"),
         );
 
     let matches: ArgMatches = app.get_matches();
-    if matches.is_present("version") {
-        println!("{}", crate_version!());
-        process::exit(0);
-    }
 
     unsafe {
-        if matches.is_present("debug") {
+        if unwraper_flag(&matches, "debug") {
             APP_ENV_INFO_STORE.debug = true;
         }
 
-        if let Some(mut x) = matches.values_of("configure") {
-            if let Some(val) = x.next() {
-                APP_ENV_INFO_STORE.configure = Some(String::from(val));
-            }
+        if let Some(val) = unwraper_option(&matches, "configure") {
+            APP_ENV_INFO_STORE.configure = Some(val);
         }
 
-        if let Some(mut x) = matches.values_of("prefix") {
-            if let Some(val) = x.next() {
-                let mut val_str = String::from(val);
-                if !val_str.starts_with('/') {
-                    val_str.insert(0, '/');
-                }
-                if !val_str.ends_with('/') {
-                    val_str.push('/');
-                }
-                APP_ENV_INFO_STORE.prefix = Some(val_str);
+        if let Some(mut val_str) = unwraper_option::<String, _>(&matches, "prefix") {
+            if !val_str.starts_with('/') {
+                val_str.insert(0, '/');
             }
+            if !val_str.ends_with('/') {
+                val_str.push('/');
+            }
+            APP_ENV_INFO_STORE.prefix = Some(val_str);
         }
 
-        if let Some(mut x) = matches.values_of("log") {
-            if let Some(val) = x.next() {
-                APP_ENV_INFO_STORE.log = Some(String::from(val));
-            }
+        if let Some(val) = unwraper_option(&matches, "log") {
+            APP_ENV_INFO_STORE.log = Some(val);
         } else {
             APP_ENV_INFO_STORE.log = Some(format!("{}.log", crate_name!()));
         }
 
-        if let Some(mut x) = matches.values_of("log-rotate") {
-            if let Some(val) = x.next() {
-                if let Ok(rotate) = val.parse::<i32>() {
-                    APP_ENV_INFO_STORE.log_rotate = rotate;
-                }
-            }
+        if let Some(rotate) = unwraper_option(&matches, "log-rotate") {
+            APP_ENV_INFO_STORE.log_rotate = rotate;
         }
 
-        if let Some(mut x) = matches.values_of("log-rotate-size") {
-            if let Some(val) = x.next() {
-                if let Ok(rotate) = val.parse::<usize>() {
-                    APP_ENV_INFO_STORE.log_rotate_size = rotate;
-                }
-            }
+        if let Some(rotate_size) = unwraper_option(&matches, "log-rotate-size") {
+            APP_ENV_INFO_STORE.log_rotate_size = rotate_size;
         }
 
-        if let Some(mut x) = matches.values_of("pid-file") {
-            if let Some(val) = x.next() {
-                APP_ENV_INFO_STORE.pid_file = Some(String::from(val));
-            }
+        if let Some(val) = unwraper_option(&matches, "pid-file") {
+            APP_ENV_INFO_STORE.pid_file = Some(val);
         } else {
             APP_ENV_INFO_STORE.pid_file = Some(format!("{}.pid", crate_name!()));
         }
@@ -388,11 +403,7 @@ impl AppEnvironment {
     pub fn get_projects(&self) -> Option<WxWorkProjectSetShared> {
         let ret: Option<WxWorkProjectSetShared>;
         unsafe {
-            ret = if let Some(ref x) = APP_ENV_INFO_STORE.projects {
-                Some(x.clone())
-            } else {
-                None
-            };
+            ret = APP_ENV_INFO_STORE.projects.as_ref().cloned();
         }
 
         ret
@@ -401,7 +412,7 @@ impl AppEnvironment {
     pub fn set_projects(&self, val: WxWorkProjectSetShared) {
         {
             if let Ok(x) = val.lock() {
-                let ref_x: &WxWorkProjectSet = &*x;
+                let ref_x: &WxWorkProjectSet = &x;
                 for (k, _) in ref_x.projs.iter() {
                     info!("load project \"{}\" success", k);
                 }
@@ -424,7 +435,7 @@ impl AppEnvironment {
     pub fn get_project(&self, name: &str) -> Option<Arc<WxWorkProject>> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                if let Some(found_proj) = (*x).projs.get(name) {
+                if let Some(found_proj) = x.projs.get(name) {
                     return Some(found_proj.clone());
                 }
             }
@@ -440,7 +451,7 @@ impl AppEnvironment {
     ) -> Option<(WxWorkCommandPtr, WxWorkCommandMatch)> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                return WxWorkProject::try_capture_commands(&(*x).cmds, message, allow_hidden);
+                return WxWorkProject::try_capture_commands(&x.cmds, message, allow_hidden);
             }
         }
 
@@ -454,7 +465,7 @@ impl AppEnvironment {
     ) -> Option<(WxWorkCommandPtr, WxWorkCommandMatch)> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                return WxWorkProject::try_capture_commands(&(*x).events, message, allow_hidden);
+                return WxWorkProject::try_capture_commands(&x.events, message, allow_hidden);
             }
         }
 
@@ -467,7 +478,7 @@ impl AppEnvironment {
     pub fn get_global_command_list(&self) -> Rc<WxWorkCommandList> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
-                return (*x).cmds.clone();
+                return x.cmds.clone();
             }
         }
 
@@ -512,7 +523,15 @@ impl AppEnvironment {
             return;
         };
 
-        if let Some(x) = kvs.get("taskTimeout") {
+        if let Some(x) = kvs.get("task_timeout") {
+            if let Some(v) = x.as_u64() {
+                if v > 0 {
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.task_timeout = v;
+                    }
+                }
+            }
+        } else if let Some(x) = kvs.get("taskTimeout") {
             if let Some(v) = x.as_u64() {
                 if v > 0 {
                     unsafe {
@@ -546,7 +565,7 @@ impl AppEnvironment {
             if let Some(v) = x.as_u64() {
                 if v > 0 {
                     unsafe {
-                        APP_ENV_INFO_STORE.conf.keep_alive = v as usize;
+                        APP_ENV_INFO_STORE.conf.keep_alive = v;
                     }
                 }
             }
@@ -556,7 +575,7 @@ impl AppEnvironment {
             if let Some(v) = x.as_u64() {
                 if v > 0 {
                     unsafe {
-                        APP_ENV_INFO_STORE.conf.client_timeout = v as u64;
+                        APP_ENV_INFO_STORE.conf.client_timeout = v;
                     }
                 }
             }
@@ -566,7 +585,7 @@ impl AppEnvironment {
             if let Some(v) = x.as_u64() {
                 if v > 0 {
                     unsafe {
-                        APP_ENV_INFO_STORE.conf.client_shutdown = v as u64;
+                        APP_ENV_INFO_STORE.conf.client_shutdown = v;
                     }
                 }
             }

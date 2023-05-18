@@ -1,0 +1,76 @@
+name: "Build On macOS"
+
+on: [push]
+
+jobs:
+  build: # job id, can be any string
+    # Job name is Build And Publish
+    name: Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [macOS-latest]
+        rust: [stable]
+        target: [x86_64-apple-darwin]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Cache cargo modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          default: true
+          override: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --target ${{ matrix.target }} --release --jobs 2 --verbose
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release --verbose --target ${{ matrix.target }} --bin wxwork_robotd
+      - name: Prepare package
+        shell: bash
+        if: ${{ contains(github.ref, 'refs/tags/') }}
+        run: |
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          mkdir -p "target/${{ matrix.target }}/release"
+          cp -rf etc tools "target/${{ matrix.target }}/release"/
+          cd "target/${{ matrix.target }}/release/"
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cd "$GITHUB_WORKSPACE" ;
+      - uses: xresloader/upload-to-github-release@master
+        if: ${{ contains(github.ref, 'refs/tags/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz"
+          tags: true
+          draft: false
+          prerelease: false
+          overwrite: true

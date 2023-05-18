@@ -76,8 +76,8 @@ pub type WxWorkCommandPtr = Arc<WxWorkCommand>;
 pub type WxWorkCommandList = Vec<WxWorkCommandPtr>;
 
 pub fn read_string_from_json_object(json: &serde_json::Value, name: &str) -> Option<String> {
-    if let Some(ref x) = json.as_object() {
-        if let Some(ref v) = x.get(name) {
+    if let Some(x) = json.as_object() {
+        if let Some(v) = x.get(name) {
             if let Some(r) = v.as_str() {
                 return Some(String::from(r));
             }
@@ -91,8 +91,8 @@ pub fn read_object_from_json_object<'a>(
     json: &'a serde_json::Value,
     name: &str,
 ) -> Option<&'a serde_json::map::Map<String, serde_json::Value>> {
-    if let Some(ref x) = json.as_object() {
-        if let Some(ref v) = x.get(name) {
+    if let Some(x) = json.as_object() {
+        if let Some(v) = x.get(name) {
             if let Some(r) = v.as_object() {
                 return Some(r);
             }
@@ -103,7 +103,7 @@ pub fn read_object_from_json_object<'a>(
 }
 
 pub fn read_bool_from_json_object(json: &serde_json::Value, name: &str) -> Option<bool> {
-    if let Some(ref x) = json.as_object() {
+    if let Some(x) = json.as_object() {
         if let Some(v) = x.get(name) {
             return match v {
                 serde_json::Value::Null => None,
@@ -142,8 +142,8 @@ pub fn read_array_from_json_object<'a>(
     json: &'a serde_json::Value,
     name: &str,
 ) -> Option<&'a Vec<serde_json::Value>> {
-    if let Some(ref x) = json.as_object() {
-        if let Some(ref v) = x.get(name) {
+    if let Some(x) = json.as_object() {
+        if let Some(v) = x.get(name) {
             if let Some(r) = v.as_array() {
                 return Some(r);
             }
@@ -154,7 +154,7 @@ pub fn read_array_from_json_object<'a>(
 }
 
 pub fn read_i64_from_json_object(json: &serde_json::Value, name: &str) -> Option<i64> {
-    if let Some(ref x) = json.as_object() {
+    if let Some(x) = json.as_object() {
         if let Some(v) = x.get(name) {
             return match v {
                 serde_json::Value::Null => None,
@@ -495,12 +495,10 @@ impl WxWorkCommand {
         json["WXWORK_ROBOT_CMD"] =
             serde_json::Value::String(String::from(caps.get(0).unwrap().as_str()));
 
-        for cap_name in self.rule.capture_names() {
-            if let Some(key) = cap_name {
-                if let Some(m) = caps.name(key) {
-                    json[format!("WXWORK_ROBOT_CMD_{}", key).as_str().to_uppercase()] =
-                        serde_json::Value::String(String::from(m.as_str()));
-                }
+        for key in self.rule.capture_names().flatten() {
+            if let Some(m) = caps.name(key) {
+                json[format!("WXWORK_ROBOT_CMD_{}", key).as_str().to_uppercase()] =
+                    serde_json::Value::String(String::from(m.as_str()));
             }
         }
 

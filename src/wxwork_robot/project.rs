@@ -1,9 +1,8 @@
 use actix_web::HttpResponse;
-use aes::Aes256;
+use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 // use cipher::{BlockCipher, NewBlockCipher};
-use block_modes::block_padding::NoPadding;
-use block_modes::{BlockMode, Cbc};
 use byteorder::{BigEndian, ByteOrder};
+
 // use openssl::symm::{Cipher, Crypter, Mode};
 use ring::rand::SecureRandom;
 
@@ -16,7 +15,8 @@ use std::time::SystemTime;
 
 use super::{base64, command, message};
 
-type Aes256CbcNoPadding = Cbc<Aes256, NoPadding>;
+type Aes128CbcEncoder = cbc::Encryptor<aes::Aes256>;
+type Aes128CbcDecoder = cbc::Decryptor<aes::Aes256>;
 
 // #[derive(Clone)]
 struct WxWorkProjectCipherInfo {
@@ -204,7 +204,7 @@ impl WxWorkProject {
         } else {
             Vec::new()
         };
-        let _ = match Aes256CbcNoPadding::new_from_slices(&aes_key_bin, &cipher_iv) {
+        let _ = match Aes128CbcDecoder::new_from_slices(&aes_key_bin, &cipher_iv) {
             Ok(x) => x,
             Err(e) => {
                 let err_msg = format!(
@@ -345,13 +345,12 @@ impl WxWorkProject {
         // 去掉rand_msg头部的16个随机字节和4个字节的msg_len，截取msg_len长度的部分即为msg，剩下的为尾部的receiveid
         // 网络字节序
 
-        let decrypter;
         // let block_size: usize;
 
-        match self.cipher_info.lock() {
+        let decrypter = match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                decrypter = match Aes256CbcNoPadding::new_from_slices(&ci.key, &ci.iv) {
+                match Aes128CbcDecoder::new_from_slices(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
@@ -362,7 +361,7 @@ impl WxWorkProject {
                         error!("{}", ret);
                         return Err(ret);
                     }
-                };
+                }
             }
             Err(e) => {
                 let ret = format!(
@@ -373,9 +372,9 @@ impl WxWorkProject {
                 error!("{}", ret);
                 return Err(ret);
             }
-        }
+        };
 
-        match decrypter.decrypt_vec(&input) {
+        match decrypter.decrypt_padded_vec_mut::<NoPadding>(input) {
             Ok(x) => Ok(x),
             Err(e) => {
                 let ret = format!("project \"{}\" try to decrypt failed, {:?}", self.name(), e);
@@ -465,7 +464,7 @@ impl WxWorkProject {
             let err_msg = format!(
                 "project \"{}\" decode {} data length invalid",
                 self.name(),
-                hex::encode(&dec_bin_unpadding)
+                hex::encode(dec_bin_unpadding)
             );
             error!("{}", err_msg);
             return Err(err_msg);
@@ -477,7 +476,7 @@ impl WxWorkProject {
                 "project \"{}\" decode message length {} , but bin data {} has only length {}",
                 self.name(),
                 msg_len,
-                hex::encode(&dec_bin_unpadding),
+                hex::encode(dec_bin_unpadding),
                 dec_bin_unpadding.len()
             );
             error!("{}", err_msg);
@@ -543,14 +542,12 @@ impl WxWorkProject {
         padded_plaintext.extend_from_slice(input);
 
         let padded_input = self.pkcs7_encode(&padded_plaintext);
-
-        let encrypter;
         // let block_size: usize;
 
-        match self.cipher_info.lock() {
+        let encrypter = match self.cipher_info.lock() {
             Ok(c) => {
                 let ci = &*c;
-                encrypter = match Aes256CbcNoPadding::new_from_slices(&ci.key, &ci.iv) {
+                match Aes128CbcEncoder::new_from_slices(&ci.key, &ci.iv) {
                     Ok(x) => x,
                     Err(e) => {
                         let ret = format!(
@@ -561,7 +558,7 @@ impl WxWorkProject {
                         error!("{}", ret);
                         return Err(ret);
                     }
-                };
+                }
             }
             Err(e) => {
                 let ret = format!(
@@ -572,16 +569,15 @@ impl WxWorkProject {
                 error!("{}", ret);
                 return Err(ret);
             }
-        }
+        };
 
-        let ret = encrypter.encrypt_vec(&padded_input);
-        Ok(ret)
+        Ok(encrypter.encrypt_padded_vec_mut::<NoPadding>(&padded_input))
     }
 
     pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {
         // msg_encrypt = Base64_Encode(AES_Encrypt(rand_msg))
         let random_str = self.alloc_random_str();
-        match self.encrypt_msg_raw(&input, &random_str) {
+        match self.encrypt_msg_raw(input, &random_str) {
             Ok(x) => match base64::STANDARD.encode(&x) {
                 Ok(v) => {
                     debug!(
@@ -627,7 +623,7 @@ impl WxWorkProject {
         //     Ok(x) => hex::encode(x.as_ref()),
         //     Err(e) => format!("Sha1 for {} failed, {:?}", cat_str, e),
         // }
-        hex::encode(&hash_res.as_ref())
+        hex::encode(hash_res.as_ref())
     }
 
     pub fn check_msg_signature(
@@ -637,7 +633,7 @@ impl WxWorkProject {
         nonce: &str,
         msg_encrypt: &str,
     ) -> bool {
-        let real_signature = self.make_msg_signature(&timestamp, &nonce, &msg_encrypt);
+        let real_signature = self.make_msg_signature(timestamp, nonce, msg_encrypt);
         debug!("project \"{}\" try to check msg signature: excepted_signature={}, timestamp={}, nonce={}, msg_encrypt={}, real_signature={}", self.name(), excepted_signature, timestamp, nonce, msg_encrypt, real_signature);
         if real_signature.as_str() == excepted_signature {
             true

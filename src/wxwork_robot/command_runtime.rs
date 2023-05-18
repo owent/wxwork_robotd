@@ -92,16 +92,16 @@ async fn run_help(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
     }
 
     let mut cmd_index = 1;
-    for ref cmd in runtime.proj.cmds.as_ref() {
-        if let Some(desc) = command::get_command_description(&cmd) {
+    for cmd in runtime.proj.cmds.as_ref() {
+        if let Some(desc) = command::get_command_description(cmd) {
             output += format!("> {}. {}\r\n", cmd_index, desc).as_str();
             cmd_index += 1;
         }
     }
 
     let app_env = app::app();
-    for ref cmd in app_env.get_global_command_list().as_ref() {
-        if let Some(desc) = command::get_command_description(&cmd) {
+    for cmd in app_env.get_global_command_list().as_ref() {
+        if let Some(desc) = command::get_command_description(cmd) {
             output += format!("> {}. {}\r\n", cmd_index, desc).as_str();
             cmd_index += 1;
         }
@@ -264,7 +264,7 @@ async fn run_http(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
         }
     };
 
-    let data_str = if let Ok(x) = String::from_utf8((&rsp_data).to_vec()) {
+    let data_str = if let Ok(x) = String::from_utf8(rsp_data.to_vec()) {
         x
     } else {
         hex::encode(&rsp_data)

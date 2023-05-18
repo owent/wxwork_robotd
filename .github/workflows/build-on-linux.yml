@@ -1,0 +1,177 @@
+name: "Build On Linux"
+
+on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
+  push:
+    branches: # Array of patterns that match refs/heads
+      - main # Push events on master branch
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  format_and_lint:
+    name: "Format and lint"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Cache cargo modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-format_and_lint-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install rust toolchain for host
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Format and lint
+        shell: bash
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy
+  build: # job id, can be any string
+    # Job name is Build And Publish
+    name: Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust: [stable]
+        target: [
+            x86_64-unknown-linux-gnu,
+            x86_64-unknown-linux-musl,
+            aarch64-unknown-linux-gnu,
+            aarch64-unknown-linux-musl,
+            arm-unknown-linux-gnueabi,
+            armv7-unknown-linux-gnueabihf,
+            armv7-unknown-linux-musleabihf,
+            arm-unknown-linux-musleabihf,
+            arm-unknown-linux-musleabi,
+            #mips-unknown-linux-gnu,
+            #mipsel-unknown-linux-gnu,
+            #mips64-unknown-linux-gnuabi64,
+            #mips64el-unknown-linux-gnuabi64,
+            #mips-unknown-linux-musl,
+            #mipsel-unknown-linux-musl,
+            #powerpc-unknown-linux-gnu,
+            #powerpc64-unknown-linux-gnu,
+            #powerpc64le-unknown-linux-gnu,
+            i686-unknown-linux-gnu,
+            i686-unknown-linux-musl,
+            aarch64-linux-android,
+            armv7-linux-androideabi,
+            x86_64-linux-android,
+            #x86_64-unknown-netbsd,
+            #x86_64-unknown-freebsd,
+            #x86_64-sun-solaris,
+          ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Cache cargo modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install rust toolchain for host
+        uses: actions-rs/toolchain@v1
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Install rust toolchain for cross
+        uses: actions-rs/toolchain@v1
+        if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: x86_64-unknown-linux-gnu
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Install Cross
+        shell: bash
+        if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+          cargo install xargo
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --target ${{ matrix.target }} --release --jobs 2 --verbose
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        with:
+          command: test
+          args: --release --verbose --target ${{ matrix.target }} --bin wxwork_robotd
+      - name: Cross Release build
+        uses: actions-rs/cargo@v1
+        # shell: bash
+        if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
+        # run: cross --target ${{ matrix.target }} --release --jobs 2 --verbose
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.target }} --release --jobs 2 --verbose
+      - name: Prepare package
+        shell: bash
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          mkdir -p "target/${{ matrix.target }}/release"
+          cp -rf etc tools "target/${{ matrix.target }}/release"/
+          cd "target/${{ matrix.target }}/release/"
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cd "$GITHUB_WORKSPACE" ;
+      - uses: xresloader/upload-to-github-release@main
+        if: ${{ github.ref_type == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz"
+          tags: true
+          draft: false
+          prerelease: false
+          overwrite: true
+      - name: Update docker
+        shell: bash
+        if: ${{ github.ref_type == 'tag' && matrix.target == 'x86_64-unknown-linux-musl' }}
+        run: |
+          cd "target/${{ matrix.target }}/release/"
+          which docker || true;
+          cp -f ../../../Dockerfile ./ ;
+          TAG_NAME="$(echo "${{ github.ref }}" | awk 'match($0, /refs\/tags\/(.+)/, tag_name) {print tag_name[1]}')";
+          echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "owt5008137" --password-stdin docker.io
+          docker build --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest -f Dockerfile . ;
+          docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TAG_NAME ;
+          docker push docker.io/owt5008137/wxwork_robotd:latest ;
+          docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME ;
+          cd "$GITHUB_WORKSPACE" ;
