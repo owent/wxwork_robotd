@@ -56,6 +56,7 @@ pub async fn dispatch_robot_request(
     if let Ok(x) = web::Query::<WxWorkRobotPostMessage>::from_query(req.query_string()) {
         return dispatch_robot_message(app, Arc::new(project_name), x.into_inner(), body).await;
     }
+
     make_robot_error_response_future("parameter error.")
 }
 

@@ -8,6 +8,7 @@ static GLOBAL: System = System;
 // crates
 #[macro_use]
 extern crate clap;
+extern crate actix_files;
 extern crate actix_web;
 extern crate awc;
 extern crate futures;
@@ -37,7 +38,9 @@ extern crate tokio;
 
 // import packages
 // use std::sync::Arc;
+use crate::actix_files::Files;
 use actix_web::{middleware::Logger, web, App, HttpServer};
+
 use std::io;
 use std::net::TcpListener;
 use std::time::Duration;
@@ -78,21 +81,29 @@ async fn main() -> io::Result<()> {
         let reg_move_default = app_env;
         let reg_move_robot = app_env;
 
-        app
+        let app = app
             // ====== register for index ======
             .service(
                 web::resource(app_env.prefix.to_string())
                     .app_data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
                     .to(move |req| handles::default::dispatch_default_index(reg_move_default, req)),
-            )
-            // ====== register for project ======
-            .service(
-                web::resource(format!("{}{{project}}/", app_env.prefix).as_str())
-                    .app_data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
-                    .to(move |req, body| {
-                        handles::robot::dispatch_robot_request(reg_move_robot, req, body)
-                    }),
-            )
+            );
+
+        // ====== register for static files ======
+        let app = if let Some(static_root) = app_env.conf.static_root.as_ref() {
+            app.service(Files::new("/", static_root).show_files_listing())
+        } else {
+            app
+        };
+
+        // ====== register for project ======
+        app.service(
+            web::resource(format!("{}{{project}}/", app_env.prefix).as_str())
+                .app_data(web::PayloadConfig::default().limit(app_env.conf.payload_size_limit))
+                .to(move |req, body| {
+                    handles::robot::dispatch_robot_request(reg_move_robot, req, body)
+                }),
+        )
         // app_env.setup(app)
     });
 

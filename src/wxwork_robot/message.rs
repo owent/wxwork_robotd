@@ -595,9 +595,7 @@ pub fn pack_text_message(msg: WxWorkMessageTextRsp) -> Result<String, String> {
                 .write_event(Event::Start(BytesStart::new("Content")))
                 .is_ok()
             {
-                let _ = writer.write_event(Event::CData(BytesCData::new(
-                    quick_xml::escape::escape(msg.content.as_str()),
-                )));
+                let _ = writer.write_event(Event::CData(BytesCData::new(msg.content)));
                 let _ = writer.write_event(Event::End(BytesEnd::new("Content")));
             }
 
@@ -610,9 +608,7 @@ pub fn pack_text_message(msg: WxWorkMessageTextRsp) -> Result<String, String> {
                         .write_event(Event::Start(BytesStart::new("Item")))
                         .is_ok()
                     {
-                        let _ = writer.write_event(Event::CData(BytesCData::new(
-                            quick_xml::escape::escape(v.as_str()),
-                        )));
+                        let _ = writer.write_event(Event::CData(BytesCData::new(v)));
                         let _ = writer.write_event(Event::End(BytesEnd::new("Item")));
                     }
                 }
@@ -628,9 +624,7 @@ pub fn pack_text_message(msg: WxWorkMessageTextRsp) -> Result<String, String> {
                         .write_event(Event::Start(BytesStart::new("Item")))
                         .is_ok()
                     {
-                        let _ = writer.write_event(Event::CData(BytesCData::new(
-                            quick_xml::escape::escape(v.to_string().as_str()),
-                        )));
+                        let _ = writer.write_event(Event::CData(BytesCData::new(v.to_string())));
                         let _ = writer.write_event(Event::End(BytesEnd::new("Item")));
                     }
                 }
@@ -673,9 +667,7 @@ pub fn pack_markdown_message(msg: WxWorkMessageMarkdownRsp) -> Result<String, St
                 .is_ok()
             {
                 // BytesText::from_escaped_str
-                let _ = writer.write_event(Event::CData(BytesCData::new(
-                    quick_xml::escape::escape(msg.content.as_str()),
-                )));
+                let _ = writer.write_event(Event::CData(BytesCData::new(msg.content)));
                 let _ = writer.write_event(Event::End(BytesEnd::new("Content")));
             }
 
@@ -702,9 +694,7 @@ pub fn pack_image_message(msg: WxWorkMessageImageRsp) -> Result<String, String> 
             .write_event(Event::Start(BytesStart::new("MsgType")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
-                "image",
-            ))));
+            let _ = writer.write_event(Event::CData(BytesCData::new("image")));
             let _ = writer.write_event(Event::End(BytesEnd::new("MsgType")));
         }
 
@@ -717,14 +707,12 @@ pub fn pack_image_message(msg: WxWorkMessageImageRsp) -> Result<String, String> 
                 .is_ok()
             {
                 // BytesText::from_escaped_str
-                let _ =
-                    writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
-                        match base64::STANDARD.encode(&msg.content) {
-                            Ok(x) => x,
-                            Err(e) => e.message,
-                        }
-                        .as_str(),
-                    ))));
+                let _ = writer.write_event(Event::CData(BytesCData::new(
+                    match base64::STANDARD.encode(&msg.content) {
+                        Ok(x) => x,
+                        Err(e) => e.message,
+                    },
+                )));
                 let _ = writer.write_event(Event::End(BytesEnd::new("Base64")));
             }
 
@@ -737,7 +725,7 @@ pub fn pack_image_message(msg: WxWorkMessageImageRsp) -> Result<String, String> 
             {
                 // BytesText::from_escaped_str
                 let _ = writer.write_event(Event::CData(BytesCData::new(
-                    quick_xml::escape::escape(hex::encode(hasher.finalize().as_slice()).as_str()),
+                    hex::encode(hasher.finalize().as_slice()).as_str(),
                 )));
                 let _ = writer.write_event(Event::End(BytesEnd::new("Md5")));
             }
@@ -769,9 +757,7 @@ pub fn pack_message_response(
             .write_event(Event::Start(BytesStart::new("Encrypt")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
-                encrypt.as_str(),
-            ))));
+            let _ = writer.write_event(Event::CData(BytesCData::new(encrypt.as_str())));
             let _ = writer.write_event(Event::End(BytesEnd::new("Encrypt")));
         }
 
@@ -779,9 +765,7 @@ pub fn pack_message_response(
             .write_event(Event::Start(BytesStart::new("MsgSignature")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
-                msg_signature.as_str(),
-            ))));
+            let _ = writer.write_event(Event::CData(BytesCData::new(msg_signature.as_str())));
             let _ = writer.write_event(Event::End(BytesEnd::new("MsgSignature")));
         }
 
@@ -797,9 +781,7 @@ pub fn pack_message_response(
             .write_event(Event::Start(BytesStart::new("Nonce")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
-                nonce.as_str(),
-            ))));
+            let _ = writer.write_event(Event::CData(BytesCData::new(nonce.as_str())));
             let _ = writer.write_event(Event::End(BytesEnd::new("Nonce")));
         }
 
@@ -830,9 +812,7 @@ pub fn get_robot_response_access_deny_content(msg: &str) -> String {
             .write_event(Event::Start(BytesStart::new("message")))
             .is_ok()
         {
-            let _ = writer.write_event(Event::CData(BytesCData::new(quick_xml::escape::escape(
-                msg,
-            ))));
+            let _ = writer.write_event(Event::CData(BytesCData::new(msg)));
             let _ = writer.write_event(Event::End(BytesEnd::new("message")));
         }
 

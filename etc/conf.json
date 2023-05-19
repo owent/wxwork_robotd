@@ -9,6 +9,7 @@
     "max_connection_per_worker": 20480,
     "max_concurrent_rate_per_worker": 256,
     "payload_size_limit": 262144,
+    "static_root": ".",
     "cmds": {
         "default": {
             "type": "echo",

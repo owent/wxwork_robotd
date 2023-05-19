@@ -1,7 +1,7 @@
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use std::net::ToSocketAddrs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -25,6 +25,7 @@ pub struct AppConfigure {
     pub max_connection_per_worker: usize,
     pub max_concurrent_rate_per_worker: usize,
     pub payload_size_limit: usize,
+    pub static_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -75,6 +76,7 @@ static mut APP_ENV_INFO_STORE: AppEnvironmentInfo = AppEnvironmentInfo {
         max_connection_per_worker: 20480,
         max_concurrent_rate_per_worker: 256,
         payload_size_limit: 262144, // 256KB
+        static_root: None,
     },
 };
 
@@ -616,6 +618,18 @@ impl AppEnvironment {
                 if v > 0 {
                     unsafe {
                         APP_ENV_INFO_STORE.conf.payload_size_limit = v as usize;
+                    }
+                }
+            }
+        }
+
+        if let Some(x) = kvs.get("static_root") {
+            if let Some(v) = x.as_str() {
+                if !v.is_empty() {
+                    if let Ok(root_path) = PathBuf::from_str(v) {
+                        unsafe {
+                            APP_ENV_INFO_STORE.conf.static_root = Some(root_path);
+                        }
                     }
                 }
             }
