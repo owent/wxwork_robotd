@@ -51,6 +51,7 @@
 + ```projects``` 中的内容可以通过 ```{{WXWORK_ROBOT_PROJECT_<变量名或匹配名>}}``` 来获取。
 + 环境变量只会导出类型为字符串、数字或者布尔值的内容，不支持嵌套内容
 + 可用的环境变量
+  * WXWORK_ROBOT_VERSION                    : 当前机器人版本号(版本>=0.10.2)
   * WXWORK_ROBOT_WEBHOOK_KEY                : 当前消息对应机器人的WebhookURL里的key字段(可用来回发消息,版本>=0.3.3)
   * WXWORK_ROBOT_WEBHOOK_URL                : 当前消息对应机器人的WebhookURL(可用来回发消息,版本>=0.3.3)
   * WXWORK_ROBOT_CMD                        : 当前执行命令的完整匹配消息
@@ -93,6 +94,7 @@
     "max_connection_per_worker": 20480,      // 每个worker的最大连接数，当连接数满之后不会再接受新连接 (版本: >=0.6.0)
     "max_concurrent_rate_per_worker": 256,   // 每个worker的最大握手连接数，当连接数满之后不会再接受新连接（一般用于控制SSL握手的开销） (版本: >=0.6.0)
     "payload_size_limit": 262144,            // 消息体最大长度，默认: 262144(256KB) (版本: >=0.6.0)
+    "static_root": ".",                      // 静态文件服务根目录，默认不开启 (版本: >=0.10.1)
     "cmds": {                                // 这里所有的command所有的project共享
         "default": {                         // 如果找不到命令，会尝试找名称为default的命令执行，这时候
             "type": "echo",                  // 直接输出类型的命令

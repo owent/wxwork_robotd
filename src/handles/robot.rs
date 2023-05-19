@@ -251,6 +251,8 @@ async fn dispatch_robot_message(
 
         (cp, cmr)
     };
+    cmd_match_res.mut_json()["WXWORK_ROBOT_VERSION"] =
+        serde_json::Value::String(crate_version!().to_string());
     cmd_match_res.mut_json()["WXWORK_ROBOT_WEBHOOK_KEY"] =
         serde_json::Value::String(msg_ntf.web_hook_key.clone());
     cmd_match_res.mut_json()["WXWORK_ROBOT_WEBHOOK_URL"] =
