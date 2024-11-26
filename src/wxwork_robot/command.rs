@@ -273,7 +273,7 @@ impl WxWorkCommand {
         } else {
             false
         });
-        reg_builder.octal(
+        reg_builder.dot_matches_new_line(
             if let Some(v) = read_bool_from_json_object(json, "dot_matches_new_line") {
                 v
             } else {
