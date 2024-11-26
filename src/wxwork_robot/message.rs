@@ -76,7 +76,7 @@ lazy_static! {
 
 pub fn get_msg_encrypt_from_bytes(bytes: web::Bytes) -> Option<String> {
     let mut reader = Reader::from_reader(bytes.as_ref());
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut is_msg_field = false;
     let mut ret = None;
 
@@ -159,7 +159,7 @@ pub fn get_msg_from_str(input: &str) -> Option<WxWorkMessageNtf> {
     let mut field_mode = WxWorkMsgField::None;
 
     let mut reader = Reader::from_str(input);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let mut setter_fn = |data_str, field_mode| match field_mode {
         WxWorkMsgField::WebHookUrl => {
