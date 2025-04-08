@@ -62,7 +62,7 @@ version = "^4.5.21"
 
 [dependencies.tokio]
 features = ["full"]
-version = "^1.41.0"
+version = "^1.43.1"
 
 [features]
 system-alloc = []
