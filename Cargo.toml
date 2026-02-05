@@ -30,39 +30,38 @@ name = "wxwork_robotd"
 
 [dependencies]
 byteorder = "^1.5.0"
-bytes = "^1.8.0"
-chrono = ">=0.4.38"
+bytes = "^1.11.1"
+chrono = ">=0.4.43"
 futures = "^0.3.31"
-handlebars = "^6.2.0"
-hex = ">=0.3.2"
+handlebars = "^6.4.0"
+hex = ">=0.4.3"
 lazy_static = "^1.5.0"
-log = ">=0.4.22"
-mio-uds = "^0.6.7"
-ring = ">=0.16.0"
-rustls = ">=0.23.0"
-quick-xml = ">=0.37.0"
-regex = "^1.11.1"
+log = ">=0.4.29"
+ring = ">=0.17.14"
+rustls = ">=0.23.36"
+quick-xml = ">=0.39.0"
+regex = "^1.12.3"
 serde = { version = "1", features = ["derive"] }
-serde_json = "^1.0.133"
+serde_json = "^1.0.149"
 aes = ">=0.8.4"
 cbc = ">=0.1.2"
 md-5 = ">=0.10.6"
 cipher = { version = ">=0.4.0", features = ["alloc"] }
 # https://github.com/RustCrypto
-actix-web = { version = "^4.9.0", features = ["rustls"] }
-actix-files = { version = ">=0.6.6" }
+actix-web = { version = "^4.12.1", features = ["rustls"] }
+actix-files = { version = ">=0.6.9" }
 
 [dependencies.awc]
 features = ["rustls"]
-version = "^3.5.1"
+version = "^3.8.1"
 
 [dependencies.clap]
 features = ["std", "suggestions", "color", "cargo", "help"]
-version = "^4.5.21"
+version = "^4.5.57"
 
 [dependencies.tokio]
 features = ["full"]
-version = "^1.41.0"
+version = "^1.49.0"
 
 [features]
 system-alloc = []

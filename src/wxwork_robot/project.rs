@@ -1,5 +1,6 @@
 use actix_web::HttpResponse;
-use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use cbc::cipher::block_padding::NoPadding;
 // use cipher::{BlockCipher, NewBlockCipher};
 use byteorder::{BigEndian, ByteOrder};
 
@@ -374,8 +375,9 @@ impl WxWorkProject {
             }
         };
 
-        match decrypter.decrypt_padded_vec_mut::<NoPadding>(input) {
-            Ok(x) => Ok(x),
+        let mut buf = input.to_vec();
+        match decrypter.decrypt_padded_mut::<NoPadding>(&mut buf) {
+            Ok(x) => Ok(x.to_vec()),
             Err(e) => {
                 let ret = format!("project \"{}\" try to decrypt failed, {:?}", self.name(), e);
                 error!("{}", ret);
@@ -571,7 +573,12 @@ impl WxWorkProject {
             }
         };
 
-        Ok(encrypter.encrypt_padded_vec_mut::<NoPadding>(&padded_input))
+        let mut buf = vec![0u8; padded_input.len()];
+        buf.copy_from_slice(&padded_input);
+        match encrypter.encrypt_padded_mut::<NoPadding>(&mut buf, padded_input.len()) {
+            Ok(x) => Ok(x.to_vec()),
+            Err(_) => Err(format!("project \"{}\" encrypt failed", self.name())),
+        }
     }
 
     pub fn encrypt_msg_raw_base64(&self, input: &[u8]) -> Result<String, String> {
