@@ -23,7 +23,7 @@ license = "MIT OR Apache-2.0"
 name = "wxwork_robotd"
 readme = "README.md"
 repository = "https://github.com/owent/wxwork_robotd"
-version = "0.10.3"
+version = "0.10.2"
 
 [[bin]]
 name = "wxwork_robotd"

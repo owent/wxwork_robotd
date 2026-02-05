@@ -1,3 +1,4 @@
+# Copyright (c) 2026 owent
 # This script takes care of testing your crate
 
 set -ex

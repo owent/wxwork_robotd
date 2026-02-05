@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 owent
 
 # required: sudo apt install musl-tools libssl-dev ca-certificates curl git wget ;
 

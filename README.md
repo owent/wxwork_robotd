@@ -1,13 +1,19 @@
 # 企业微信机器人接入
 
-|                           | [Linux+OSX][linux-link] | [Windows MSVC+GNU][windows-link] |
-|:-------------------------:|:-----------------------:|:--------------------------------:|
-| Build & Publish           | ![linux-badge]          | ![windows-badge]                 |
+|                           | [Linux][linux-link] | [macOS][macos-link] | [Windows MSVC][windows-link] |
+|:-------------------------:|:-------------------:|:-------------------:|:----------------------------:|
+| Build & Publish           | ![linux-badge]      | ![macos-badge]      | ![windows-badge]             |
 
-[linux-badge]: https://travis-ci.org/owt5008137/wxwork_robotd.svg?branch=master "Travis build status"
-[linux-link]:  https://travis-ci.org/owt5008137/wxwork_robotd "Travis build status"
-[windows-badge]: https://ci.appveyor.com/api/projects/status/ht5pks682ehe2vkt?svg=true "AppVeyor build status"
-[windows-link]:  https://ci.appveyor.com/project/owt5008137/wxwork-robotd "AppVeyor build status"
+[![crates-badge]][crates-link]
+
+[linux-badge]: https://github.com/owent/wxwork_robotd/actions/workflows/build-on-linux.yml/badge.svg?branch=main "GitHub Actions build status"
+[linux-link]:  https://github.com/owent/wxwork_robotd/actions/workflows/build-on-linux.yml "GitHub Actions build status"
+[macos-badge]: https://github.com/owent/wxwork_robotd/actions/workflows/build-on-macos.yml/badge.svg?branch=main "GitHub Actions build status"
+[macos-link]:  https://github.com/owent/wxwork_robotd/actions/workflows/build-on-macos.yml "GitHub Actions build status"
+[windows-badge]: https://github.com/owent/wxwork_robotd/actions/workflows/build-on-windows.yml/badge.svg?branch=main "GitHub Actions build status"
+[windows-link]:  https://github.com/owent/wxwork_robotd/actions/workflows/build-on-windows.yml "GitHub Actions build status"
+[crates-badge]: https://img.shields.io/crates/v/wxwork_robotd.svg "Crates.io version"
+[crates-link]: https://crates.io/crates/wxwork_robotd
 
 来自企业微信机器人的请求会先按填入的URL的最后一节匹配到配置中 ```projects``` 里 ```name``` 对应的项目中，然后优先从 ```projects``` 内尝试匹配命令，再从全局域匹配命令。 命令的类型( ```type``` )支持 **echo （输出消息）** 、 **http （HTTP请求）** 、 **help （帮助信息）** 和 **spawn （子进程执行命令）** 。 配置项中的 *echo* 、 *exec* 、 *args* 、 *url* 、 *post* 、 *prefix* 、 *suffix* 会使用模板引擎尝试对内容进行替换（传参），传入的参数可以是匹配命令里的匹配结果，也可以是预先配置好的环境变量。
 

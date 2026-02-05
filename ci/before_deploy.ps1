@@ -1,3 +1,4 @@
+# Copyright (c) 2026 owent
 # This script takes care of packaging the build artifacts that will go in the
 # release zipfile
 

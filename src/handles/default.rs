@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use actix_web::{HttpRequest, HttpResponse};
 
 use super::super::app::AppEnvironment;

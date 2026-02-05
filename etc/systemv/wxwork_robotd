@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (c) 2026 owent
 ### BEGIN INIT INFO
 # Provides:          wxwork_robotd
 # Required-Start:    $network $local_fs $remote_fs

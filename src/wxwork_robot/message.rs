@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use quick_xml::events::BytesCData;
 
 use crate::actix_web::web;

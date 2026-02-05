@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use std::collections::HashMap;
 use std::sync::Arc;
 

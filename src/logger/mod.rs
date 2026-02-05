@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use std::cell::{RefCell, RefMut};
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::Write;

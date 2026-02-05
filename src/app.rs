@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use std::net::ToSocketAddrs;

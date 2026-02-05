@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 pub mod base64;
 pub mod command;
 pub mod command_runtime;

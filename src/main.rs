@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+//
 // When the `system-alloc` feature is used, use the System Allocator
 #[cfg(feature = "system-alloc")]
 use std::alloc::System;

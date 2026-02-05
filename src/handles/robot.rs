@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use crate::actix_web::{web, FromRequest, HttpRequest, HttpResponse};
 use crate::serde::Deserialize;
 

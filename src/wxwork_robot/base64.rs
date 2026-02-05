@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use std::fmt::{self, Display};
 use std::iter::FromIterator;
 

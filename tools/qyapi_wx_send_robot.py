@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Copyright (c) 2026 owent
 """
 使用企业微信提供的Robot服务在企业微信群发送消息
 """

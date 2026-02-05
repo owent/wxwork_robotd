@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use super::base64;
 
 #[derive(Debug)]

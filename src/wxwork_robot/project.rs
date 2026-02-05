@@ -1,3 +1,5 @@
+// Copyright (c) 2026 owent
+
 use actix_web::HttpResponse;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use cbc::cipher::block_padding::NoPadding;
