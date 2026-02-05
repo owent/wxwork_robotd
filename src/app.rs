@@ -3,7 +3,6 @@ use std::io::Write;
 use std::net::ToSocketAddrs;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -100,11 +99,7 @@ where
     T: FromStr,
 {
     fn pick(input: &str) -> Option<Self> {
-        if let Ok(v) = input.parse::<T>() {
-            Some(v)
-        } else {
-            None
-        }
+        input.parse::<T>().ok()
     }
 }
 
@@ -280,12 +275,7 @@ fn write_pid_file(pid_file: &str) {
 }
 
 pub fn app_conf() -> &'static AppConfigure {
-    let ret;
-    unsafe {
-        ret = &APP_ENV_INFO_STORE.conf;
-    }
-
-    ret
+    unsafe { &*std::ptr::addr_of!(APP_ENV_INFO_STORE.conf) }
 }
 
 fn generate_app_env() -> AppEnvironment {
@@ -316,7 +306,7 @@ fn generate_app_env() -> AppEnvironment {
             } else {
                 "server.pid"
             },
-            conf: &APP_ENV_INFO_STORE.conf,
+            conf: &*std::ptr::addr_of!(APP_ENV_INFO_STORE.conf),
         }
     }
 }
@@ -403,12 +393,11 @@ impl AppEnvironment {
     }
 
     pub fn get_projects(&self) -> Option<WxWorkProjectSetShared> {
-        let ret: Option<WxWorkProjectSetShared>;
         unsafe {
-            ret = APP_ENV_INFO_STORE.projects.as_ref().cloned();
+            (*std::ptr::addr_of!(APP_ENV_INFO_STORE.projects))
+                .as_ref()
+                .cloned()
         }
-
-        ret
     }
 
     pub fn set_projects(&self, val: WxWorkProjectSetShared) {
@@ -477,14 +466,14 @@ impl AppEnvironment {
     /// Get global command list.
     ///
     /// **This is a high cost API**
-    pub fn get_global_command_list(&self) -> Rc<WxWorkCommandList> {
+    pub fn get_global_command_list(&self) -> Arc<WxWorkCommandList> {
         if let Some(projs) = self.get_projects() {
             if let Ok(x) = projs.lock() {
                 return x.cmds.clone();
             }
         }
 
-        Rc::new(Vec::new())
+        Arc::new(Vec::new())
     }
 
     pub fn reload(&mut self) -> bool {
@@ -626,10 +615,9 @@ impl AppEnvironment {
         if let Some(x) = kvs.get("static_root") {
             if let Some(v) = x.as_str() {
                 if !v.is_empty() {
-                    if let Ok(root_path) = PathBuf::from_str(v) {
-                        unsafe {
-                            APP_ENV_INFO_STORE.conf.static_root = Some(root_path);
-                        }
+                    let root_path = PathBuf::from_str(v).unwrap();
+                    unsafe {
+                        APP_ENV_INFO_STORE.conf.static_root = Some(root_path);
                     }
                 }
             }

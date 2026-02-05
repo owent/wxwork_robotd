@@ -170,13 +170,7 @@ pub fn read_i64_from_json_object(json: &serde_json::Value, name: &str) -> Option
                         Some(0)
                     }
                 }
-                serde_json::Value::String(r) => {
-                    if let Ok(rv) = r.parse::<i64>() {
-                        Some(rv)
-                    } else {
-                        None
-                    }
-                }
+                serde_json::Value::String(r) => r.parse::<i64>().ok(),
                 serde_json::Value::Array(_) => None,
                 serde_json::Value::Object(_) => None,
             };
@@ -247,38 +241,13 @@ impl WxWorkCommand {
         let mut envs_obj = json!({});
         // read_bool_from_json_object
         let mut reg_builder = RegexBuilder::new(cmd_name);
-        reg_builder.case_insensitive(
-            if let Some(v) = read_bool_from_json_object(json, "case_insensitive") {
-                v
-            } else {
-                true
-            },
-        );
-        reg_builder.multi_line(
-            if let Some(v) = read_bool_from_json_object(json, "multi_line") {
-                v
-            } else {
-                true
-            },
-        );
-        reg_builder.unicode(
-            if let Some(v) = read_bool_from_json_object(json, "unicode") {
-                v
-            } else {
-                true
-            },
-        );
-        reg_builder.octal(if let Some(v) = read_bool_from_json_object(json, "octal") {
-            v
-        } else {
-            false
-        });
+        reg_builder
+            .case_insensitive(read_bool_from_json_object(json, "case_insensitive").unwrap_or(true));
+        reg_builder.multi_line(read_bool_from_json_object(json, "multi_line").unwrap_or(true));
+        reg_builder.unicode(read_bool_from_json_object(json, "unicode").unwrap_or(true));
+        reg_builder.octal(read_bool_from_json_object(json, "octal").unwrap_or_default());
         reg_builder.dot_matches_new_line(
-            if let Some(v) = read_bool_from_json_object(json, "dot_matches_new_line") {
-                v
-            } else {
-                false
-            },
+            read_bool_from_json_object(json, "dot_matches_new_line").unwrap_or_default(),
         );
         let rule_obj = match reg_builder.build() {
             Ok(x) => x,
@@ -339,11 +308,7 @@ impl WxWorkCommand {
                         }
                     }
 
-                    let cwd_field = if let Some(x) = read_string_from_json_object(json, "cwd") {
-                        x
-                    } else {
-                        String::default()
-                    };
+                    let cwd_field = read_string_from_json_object(json, "cwd").unwrap_or_default();
 
                     WxWorkCommandData::Spawn(Arc::new(WxWorkCommandSpawn {
                         exec: exec_field,
@@ -392,13 +357,8 @@ impl WxWorkCommand {
                             },
                             None => WxWorkCommandHttpMethod::Auto,
                         },
-                        content_type: if let Some(x) =
-                            read_string_from_json_object(json, "content_type")
-                        {
-                            x
-                        } else {
-                            String::default()
-                        },
+                        content_type: read_string_from_json_object(json, "content_type")
+                            .unwrap_or_default(),
                         headers: if let Some(m) = read_object_from_json_object(json, "headers") {
                             let mut res = HashMap::new();
                             for (k, v) in m {
@@ -427,16 +387,8 @@ impl WxWorkCommand {
                     }))
                 }
                 "help" => WxWorkCommandData::Help(Arc::new(WxWorkCommandHelp {
-                    prefix: if let Some(x) = read_string_from_json_object(json, "prefix") {
-                        x
-                    } else {
-                        String::default()
-                    },
-                    suffix: if let Some(x) = read_string_from_json_object(json, "suffix") {
-                        x
-                    } else {
-                        String::default()
-                    },
+                    prefix: read_string_from_json_object(json, "prefix").unwrap_or_default(),
+                    suffix: read_string_from_json_object(json, "suffix").unwrap_or_default(),
                 })),
                 "ignore" => WxWorkCommandData::Ignore,
                 _ => {
@@ -462,21 +414,13 @@ impl WxWorkCommand {
             name: Arc::new(String::from(cmd_name)),
             rule: rule_obj,
             envs: envs_obj,
-            hidden: if let Some(x) = read_bool_from_json_object(json, "hidden") {
-                x
-            } else {
-                false
-            },
+            hidden: read_bool_from_json_object(json, "hidden").unwrap_or_default(),
             description: if let Some(x) = read_string_from_json_object(json, "description") {
                 Arc::new(x)
             } else {
                 Arc::new(String::default())
             },
-            order: if let Some(x) = read_i64_from_json_object(json, "order") {
-                x
-            } else {
-                0
-            },
+            order: read_i64_from_json_object(json, "order").unwrap_or_default(),
         })
     }
 

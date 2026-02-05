@@ -174,10 +174,9 @@ async fn run_http(runtime: Arc<WxWorkCommandRuntime>) -> HttpResponse {
         } else {
             http_data.echo.clone()
         };
-        let post_data = match reg.render_template(http_data.post.as_str(), &runtime.envs) {
-            Ok(x) => x,
-            Err(_) => String::default(),
-        };
+        let post_data = reg
+            .render_template(http_data.post.as_str(), &runtime.envs)
+            .unwrap_or_default();
 
         {
             let mut http_request = match http_data.method {

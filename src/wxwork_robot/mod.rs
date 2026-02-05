@@ -5,14 +5,13 @@ pub mod error;
 pub mod message;
 pub mod project;
 
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct WxWorkProjectSet {
     pub projs: project::WxWorkProjectMap,
-    pub cmds: Rc<command::WxWorkCommandList>,
-    pub events: Rc<command::WxWorkCommandList>,
+    pub cmds: Arc<command::WxWorkCommandList>,
+    pub events: Arc<command::WxWorkCommandList>,
 }
 
 pub type WxWorkProjectSetShared = Arc<Mutex<WxWorkProjectSet>>;
@@ -53,8 +52,8 @@ pub fn build_project_set(json: &serde_json::Value) -> Option<WxWorkProjectSet> {
 
     let ret = WxWorkProjectSet {
         projs: project::WxWorkProject::parse(projs_json_conf),
-        cmds: Rc::new(command::WxWorkCommand::parse(cmds_json_conf)),
-        events: Rc::new(command::WxWorkCommand::parse(events_json_conf)),
+        cmds: Arc::new(command::WxWorkCommand::parse(cmds_json_conf)),
+        events: Arc::new(command::WxWorkCommand::parse(events_json_conf)),
     };
 
     Some(ret)

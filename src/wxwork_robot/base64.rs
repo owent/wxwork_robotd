@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 use std::iter::FromIterator;
 
 #[derive(Clone, Copy)]
@@ -31,9 +31,9 @@ pub struct DecodeError {
     pub position: usize,
 }
 
-impl ToString for DecodeError {
-    fn to_string(&self) -> String {
-        self.message.clone()
+impl Display for DecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
     }
 }
 
@@ -44,9 +44,9 @@ pub struct EncodeError {
     pub position: usize,
 }
 
-impl ToString for EncodeError {
-    fn to_string(&self) -> String {
-        self.message.clone()
+impl Display for EncodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
     }
 }
 
@@ -59,8 +59,8 @@ impl<'a, 'b> Engine<'a, 'b> {
             return Ok(String::default());
         }
 
-        let mut n = (input_len + 2) / 3;
-        if n > ((usize::max_value() - 1) / 4) {
+        let mut n = input_len.div_ceil(3);
+        if n > ((usize::MAX - 1) / 4) {
             return Err(EncodeError {
                 message: String::from("buffer too large"),
                 position: 0,
@@ -136,7 +136,7 @@ impl<'a, 'b> Engine<'a, 'b> {
             real_len += 1;
         }
 
-        let mut ret: Vec<u8> = Vec::with_capacity(((real_len + 3) / 4) * 3);
+        let mut ret: Vec<u8> = Vec::with_capacity((real_len / 4 + 1) * 3);
         let mut x: u32 = 0;
         let mut n: usize = 0;
         let mut block_len: i32 = 3;

@@ -8,7 +8,6 @@ use byteorder::{BigEndian, ByteOrder};
 use ring::rand::SecureRandom;
 
 use std::collections::HashMap;
-use std::iter;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -181,15 +180,11 @@ impl WxWorkProject {
             Err(e) => {
                 error!(
                     "project \"{}\" configure encodingAESKey \"{}\" decode failed \"{}\"",
-                    proj_name,
-                    proj_aes_key,
-                    e.to_string()
+                    proj_name, proj_aes_key, e
                 );
                 eprintln!(
                     "project \"{}\" configure encodingAESKey \"{}\" decode failed \"{}\"",
-                    proj_name,
-                    proj_aes_key,
-                    e.to_string()
+                    proj_name, proj_aes_key, e
                 );
                 return None;
             }
@@ -320,7 +315,7 @@ impl WxWorkProject {
 
         ret.reserve(text_length + padding_length);
         ret.extend_from_slice(input);
-        ret.extend(iter::repeat(padding_char).take(padding_length));
+        ret.extend(std::iter::repeat_n(padding_char, padding_length));
 
         ret
     }
@@ -537,8 +532,7 @@ impl WxWorkProject {
         let mut input_len_buf = [0; 4];
         BigEndian::write_u32(&mut input_len_buf, input.len() as u32);
 
-        let mut padded_plaintext: Vec<u8> = Vec::new();
-        padded_plaintext.reserve(64 + input.len());
+        let mut padded_plaintext: Vec<u8> = Vec::with_capacity(64 + input.len());
         padded_plaintext.extend_from_slice(random_str.as_bytes());
         padded_plaintext.extend_from_slice(&input_len_buf);
         padded_plaintext.extend_from_slice(input);
